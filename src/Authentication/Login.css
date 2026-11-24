@@ -233,6 +233,66 @@
   text-align: center;
 }
 
+/* Short, staggered entrance motion keeps the login view lively without delaying it. */
+.login-page {
+  animation: login-background-settle 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.login-card {
+  animation: login-card-enter 620ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.login-brand,
+.login-card h1,
+.login-form > *,
+.login-divider,
+.login-socials,
+.login-register {
+  animation: login-content-enter 480ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.login-brand { animation-delay: 100ms; }
+.login-card h1 { animation-delay: 170ms; }
+.login-form > :nth-child(1) { animation-delay: 220ms; }
+.login-form > :nth-child(2) { animation-delay: 270ms; }
+.login-form > :nth-child(3) { animation-delay: 320ms; }
+.login-form > :nth-child(4) { animation-delay: 370ms; }
+.login-form > :nth-child(5) { animation-delay: 420ms; }
+.login-form > :nth-child(6) { animation-delay: 470ms; }
+.login-divider { animation-delay: 520ms; }
+.login-socials { animation-delay: 570ms; }
+.login-register { animation-delay: 620ms; }
+
+.login-loading-spinner {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: login-spinner 700ms linear infinite;
+}
+
+@keyframes login-background-settle {
+  from { background-size: 106% 106%; }
+  to { background-size: 100% 100%; }
+}
+
+@keyframes login-card-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes login-content-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes login-spinner {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 520px) {
   .login-page {
     padding: 18px 14px;
@@ -281,5 +341,27 @@
   .login-card h1 {
     margin-bottom: 16px;
     font-size: 35px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page,
+  .login-card,
+  .login-brand,
+  .login-card h1,
+  .login-form > *,
+  .login-divider,
+  .login-socials,
+  .login-register,
+  .login-loading-spinner {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+
+  .login-page { background-size: 100% 100%; }
+  .login-card, .login-brand, .login-card h1, .login-form > *, .login-divider, .login-socials, .login-register {
+    opacity: 1;
+    transform: none;
   }
 }

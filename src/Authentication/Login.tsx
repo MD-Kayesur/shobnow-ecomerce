@@ -132,9 +132,13 @@ const Login: React.FC = () => {
             <Link to="/forgot-password">Forgot Password?</Link>
           </div>
 
-          <button type="submit" className="login-submit" disabled={isLoading}>
+          <button type="submit" className="login-submit" disabled={isLoading} aria-busy={isLoading}>
             <span>{isLoading ? "Signing in..." : "Sign In"}</span>
-            {!isLoading && <ArrowRight aria-hidden="true" />}
+            {isLoading ? (
+              <span className="login-loading-spinner" aria-hidden="true" />
+            ) : (
+              <ArrowRight aria-hidden="true" />
+            )}
           </button>
         </form>
 

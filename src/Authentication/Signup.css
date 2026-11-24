@@ -119,6 +119,52 @@
 .signup-microsoft-icon { color: #f25022; }
 .signup-login-link { margin: 18px 0 0; color: #536074; font-size: 13px; text-align: center; }
 
+/* Entry motion runs when the Register route mounts from the Login page. */
+.signup-page {
+  animation: signup-background-settle 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.signup-card {
+  animation: signup-card-enter 620ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.signup-brand,
+.signup-card h1,
+.signup-subtitle,
+.signup-form > *,
+.signup-divider,
+.signup-socials,
+.signup-login-link {
+  animation: signup-content-enter 460ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.signup-brand { animation-delay: 100ms; }
+.signup-card h1 { animation-delay: 160ms; }
+.signup-subtitle { animation-delay: 210ms; }
+.signup-form > :nth-child(1) { animation-delay: 260ms; }
+.signup-form > :nth-child(2) { animation-delay: 320ms; }
+.signup-form > :nth-child(3) { animation-delay: 380ms; }
+.signup-form > :nth-child(4) { animation-delay: 440ms; }
+.signup-form > :nth-child(5) { animation-delay: 500ms; }
+.signup-divider { animation-delay: 550ms; }
+.signup-socials { animation-delay: 600ms; }
+.signup-login-link { animation-delay: 650ms; }
+
+@keyframes signup-background-settle {
+  from { background-size: 106% 106%; }
+  to { background-size: 100% 100%; }
+}
+
+@keyframes signup-card-enter {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes signup-content-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 600px) {
   .signup-page { padding: 18px 13px; background-position: center; }
   .signup-card { padding: 25px 23px 24px; border-radius: 24px; }
@@ -127,4 +173,32 @@
 
 @media (max-width: 420px) {
   .signup-field-grid { grid-template-columns: 1fr; gap: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signup-page,
+  .signup-card,
+  .signup-brand,
+  .signup-card h1,
+  .signup-subtitle,
+  .signup-form > *,
+  .signup-divider,
+  .signup-socials,
+  .signup-login-link {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .signup-page { background-size: 100% 100%; }
+  .signup-card,
+  .signup-brand,
+  .signup-card h1,
+  .signup-subtitle,
+  .signup-form > *,
+  .signup-divider,
+  .signup-socials,
+  .signup-login-link {
+    opacity: 1;
+    transform: none;
+  }
 }
