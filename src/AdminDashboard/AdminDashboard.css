@@ -127,3 +127,18 @@
     min-height: 100%;
   }
 }
+
+.admin-dashboard-shell .banner-input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #f2dfe9;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.65rem 0.8rem;
+  color: #20244d;
+}
+
+.admin-dashboard-shell .banner-input:focus {
+  border-color: #e72c7e;
+  outline: 3px solid rgb(231 44 126 / 12%);
+}
