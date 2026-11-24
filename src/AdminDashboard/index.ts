@@ -2,6 +2,7 @@
 export { default as AdminLayout } from "./AdminLayout";
 export { default as AdminDashboardPage } from "./pages/AdminDashboardPage";
 export { default as ProductsPage } from "./pages/ProductsPage";
+export { default as BannersPage } from "./pages/BannersPage";
 export { default as OrdersPage } from "./pages/OrdersPage";
 export { default as CustomersPage } from "./pages/CustomersPage";
 export { default as CategoriesBrandsPage } from "./pages/CategoriesBrandsPage";

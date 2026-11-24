@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingBag,
   Package,
+  Images,
   Layers,
   Activity,
   ShieldAlert,
@@ -49,6 +50,11 @@ const defaultSidebarItems: SidebarItem[] = [
     icon: Package,
     label: "Products / Inventory",
     href: "/admin-dashboard/products",
+  },
+  {
+    icon: Images,
+    label: "Banners",
+    href: "/admin-dashboard/banners",
   },
   {
     icon: ShoppingBag,
