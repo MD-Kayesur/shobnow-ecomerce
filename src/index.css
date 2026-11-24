@@ -1,0 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Lora:wght@600&display=swap");
+
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark, .dark *));
+@import "swiper/css";
+@import "swiper/css/navigation";
+@import "swiper/css/pagination";
+
+:root {
+  /* ==========================================================================
+     GLOBAL THEME COLORS
+     👉 Change these variables anytime to update the entire website colors!
+     ========================================================================== */
+  --color-primary: #A20E4C;
+  --color-primary-hover: #7E0B3B;
+  --color-primary-light: #FEEAF1;
+  --color-primary-border: #F6E7ED;
+  --color-accent: #F59E0B;
+  --color-accent-hover: #E58E00;
+}
+
+@theme {
+  /* 🎨 Primary Brand & Accent Colors linked to CSS variables */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-border: var(--color-primary-border);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+
+  /* 🌑 Website Base Colors */
+  --color-website-black: #212a31;
+  --color-website-darkGray: #2e3944;
+  --color-website-lightGray: #d3d9d4;
+  --color-website-green: #124e66;
+  --color-website-lightGreen: #748d92;
+
+  /* 🖋 Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-faustina: "Faustina", Georgia, serif;
+  --font-inter: "Inter", sans-serif;
+  --font-manrope: "Manrope", sans-serif;
+  --font-heading: "Faustina", serif;
+
+  /* 🎨 Brand & UI Colors */
+  --color-primary-brand: var(--color-primary);
+  --color-brand-purple: var(--color-primary);
+  --color-brand-purple-hover: var(--color-primary-hover);
+  --color-brand-purple-light: var(--color-primary-light);
+  --color-brand-amber: var(--color-accent);
+  --color-primary-orange: #ef6820;
+  --color-heading-blue: #194185;
+  --color-paragraph-gray: #717688;
+
+  /* 🪄 Card Background Gradient */
+  --color-card-background: linear-gradient(...), rgba(12, 16, 34, 0.6);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply font-sans bg-[#FDFBF9] text-gray-800 antialiased dark:bg-[#090D14] dark:text-gray-100 transition-colors duration-200;
+    min-height: 100vh;
+  }
+  html.dark body,
+  html.dark #root {
+    background-color: #090D14;
+    color: #F9FAFB;
+  }
+}
+
+/* Custom Swiper Pagination Styling */
+.swiper-pagination-bullet {
+  background: #4338ca !important;
+  opacity: 0.35 !important;
+  transition: all 0.3s ease !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: #4338ca !important;
+  opacity: 1 !important;
+  width: 24px !important;
+  border-radius: 9999px !important;
+}
+
+/* ==========================================================================
+   Scrollbar Hiding Utilities (Chrome, Edge, Safari, Firefox, iOS, Android)
+   ========================================================================== */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+.scrollbar-none,
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
