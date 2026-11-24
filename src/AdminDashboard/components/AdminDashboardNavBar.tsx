@@ -8,8 +8,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import userPlaceholder from "@/assets/icons/user.svg";
+import { useLogoutMutation } from "@/redux/features/auth/authApi";
+import { logOut } from "@/redux/features/auth/authSlice";
+import { useAppDispatch } from "@/redux/hooks/redux-hook";
 
 export interface NavbarProps {
   onMobileMenuToggle: () => void;
@@ -24,8 +27,17 @@ const AdminDashboardNavBar: React.FC<NavbarProps> = ({
   userName = "Admin User",
   isSidebarOpen,
 }) => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [logout] = useLogoutMutation();
+  const handleSignOut = async () => {
+    try { await logout().unwrap(); } catch { /* Clear local state even if the API is unavailable. */ }
+    dispatch(logOut());
+    navigate("/login", { replace: true });
+  };
+
   return (
-    <div className="bg-white dark:bg-[#0F141C] border-b border-gray-200/80 dark:border-gray-800 transition-colors">
+    <div className="admin-dashboard-navbar border-b border-pink-100 transition-colors">
       <header
         className={`flex items-center justify-between h-16 px-4 md:px-8 ${
           isSidebarOpen ? "max-w-[1400px] mx-auto" : ""
@@ -36,7 +48,7 @@ const AdminDashboardNavBar: React.FC<NavbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-gray-700 dark:text-gray-300 hover:text-primary cursor-pointer"
+            className="lg:hidden text-gray-700 hover:text-primary cursor-pointer"
             onClick={onMobileMenuToggle}
             aria-label="Open sidebar"
           >
@@ -47,7 +59,7 @@ const AdminDashboardNavBar: React.FC<NavbarProps> = ({
             <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
               Admin Portal
             </span>
-            <span className="text-sm md:text-base font-semibold text-gray-900 dark:text-white">
+            <span className="text-sm md:text-base font-semibold text-gray-900 ">
               Hello, {userName}
             </span>
           </div>
@@ -73,37 +85,37 @@ const AdminDashboardNavBar: React.FC<NavbarProps> = ({
 
             <DropdownMenuContent
               align="end"
-              className="w-56 bg-white dark:bg-[#141A24] text-gray-800 dark:text-gray-100 shadow-xl rounded-2xl border border-gray-200 dark:border-gray-800 p-1.5"
+              className="admin-dashboard-menu w-56 bg-white text-gray-800 shadow-xl rounded-2xl border border-gray-200 p-1.5"
             >
-              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/80 mb-1">
-                <p className="text-xs font-bold text-gray-900 dark:text-white">{userName}</p>
+              <div className="px-3 py-2 border-b border-gray-100 mb-1">
+                <p className="text-xs font-bold text-gray-900 ">{userName}</p>
                 <p className="text-[11px] text-gray-500">Super Administrator</p>
               </div>
 
               <Link to="/admin-dashboard/settings">
-                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary dark:hover:bg-primary/20 cursor-pointer transition-colors">
+                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary cursor-pointer transition-colors">
                   <Settings className="w-4 h-4 text-primary" />
                   <span>Settings</span>
                 </DropdownMenuItem>
               </Link>
 
               <Link to="/admin-dashboard/settings#security-password-section">
-                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary dark:hover:bg-primary/20 cursor-pointer transition-colors">
+                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary cursor-pointer transition-colors">
                   <KeyRound className="w-4 h-4 text-primary" />
                   <span>Change Password</span>
                 </DropdownMenuItem>
               </Link>
 
               <Link to="/privacy-policy">
-                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary dark:hover:bg-primary/20 cursor-pointer transition-colors">
+                <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl hover:bg-primary-light hover:text-primary cursor-pointer transition-colors">
                   <ShieldCheck className="w-4 h-4 text-gray-500" />
                   <span>Privacy Policy</span>
                 </DropdownMenuItem>
               </Link>
 
-              <DropdownMenuSeparator className="my-1 bg-gray-100 dark:bg-gray-800" />
+              <DropdownMenuSeparator className="my-1 bg-gray-100 " />
 
-              <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer transition-colors">
+              <DropdownMenuItem onSelect={handleSignOut} className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors">
                 <LogOut className="w-4 h-4" />
                 <span>Sign Out</span>
               </DropdownMenuItem>

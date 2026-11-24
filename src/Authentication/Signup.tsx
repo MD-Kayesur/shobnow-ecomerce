@@ -1,60 +1,59 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Mail, Phone, User as UserIcon } from "lucide-react";
+import { ArrowRight, Lock, LoaderCircle, Mail, Phone, User as UserIcon } from "lucide-react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
-import { FaGithub, FaMicrosoft } from "react-icons/fa";
+import { FaFacebookF, FaTiktok } from "react-icons/fa";
 import { toast } from "sonner";
-import { useAppDispatch } from "@/redux/hooks/redux-hook";
-import { setUser } from "@/redux/features/auth/authSlice";
-import { User } from "@/redux/types/auth.type";
+import { useRegisterMutation } from "@/redux/features/auth/authApi";
 import "./Signup.css";
 
-const createMockJwt = (payload: {
-  id: string;
-  name: string;
-  email: string;
-  role: User["role"];
-}) => {
-  try {
-    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-    const body = btoa(
-      JSON.stringify({
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 86400 * 7,
-        ...payload,
-      }),
-    );
-    return `${header}.${body}.signature`;
-  } catch {
-    return "mock-jwt-token";
-  }
-};
-
 const Signup: React.FC = () => {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [retypePassword, setRetypePassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [registerUser, { isLoading }] = useRegisterMutation();
 
-  const isEmailValid = email.includes("@") && email.includes(".");
-  const isNameValid = name.trim().length >= 3;
-  const passwordsMatch = password.length >= 6 && password === retypePassword;
+  const passwordChecks = {
+    length: password.length >= 8,
+    mixedCase: /[a-z]/.test(password) && /[A-Z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSymbol: /[^A-Za-z0-9\s]/.test(password),
+  };
+  const passwordStrong = Object.values(passwordChecks).every(Boolean);
+  const emailFormatValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setFormError("");
     if (!name.trim() || !email.trim() || !password) {
       toast.error("Please fill in all required fields.");
       return;
     }
+    setEmailTouched(true);
+    if (!emailFormatValid) {
+      const message = "Enter a valid email address, for example name@example.com.";
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
     if (password !== retypePassword) {
-      toast.error("Passwords do not match!");
+      setFormError("Your passwords do not match. Please check both fields.");
+      toast.error("Passwords do not match.");
+      return;
+    }
+    if (!passwordStrong) {
+      const message = "Use at least 8 characters with uppercase and lowercase letters, a number, and a symbol.";
+      setFormError(message);
+      toast.error(message);
       return;
     }
     if (!agreeTerms) {
@@ -62,52 +61,55 @@ const Signup: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role: "user",
-    };
-    const token = createMockJwt({
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-    });
-    dispatch(setUser({ user: newUser, token }));
-    localStorage.setItem("user", JSON.stringify(newUser));
-    toast.success("Account created successfully!", {
-      description: `Welcome to SHOB Now, ${newUser.name}! Redirecting to customer dashboard...`,
-    });
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/user-dashboard");
-    }, 500);
+    try {
+      const normalizedPhone = phone.replace(/[\s()-]/g, "");
+      if (normalizedPhone && !/^(?:01[3-9]\d{8}|\+?8801[3-9]\d{8})$/.test(normalizedPhone)) {
+        const message = "Enter a valid Bangladesh mobile number, or leave the optional phone field blank.";
+        setFormError(message);
+        toast.error(message);
+        return;
+      }
+      await registerUser({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        confirmPassword: retypePassword,
+        ...(normalizedPhone ? { phoneNumber: normalizedPhone } : {}),
+      }).unwrap();
+
+      sessionStorage.setItem("auth_reset_identifier", email.trim().toLowerCase());
+      sessionStorage.setItem("auth_reset_method", "email");
+      sessionStorage.setItem("auth_otp_type", "ACCOUNT_VERIFY");
+      sessionStorage.setItem("auth_otp_expires_at", String(Date.now() + 10 * 60 * 1000));
+      sessionStorage.setItem("auth_otp_resend_at", String(Date.now() + 10 * 60 * 1000));
+      toast.success("Account created. Check your email for the verification code.");
+      navigate("/verify-otp");
+    } catch (error: unknown) {
+      const apiError = error as {
+        data?: { message?: string | string[]; error?: string; errors?: { message?: string }[] };
+        error?: string;
+      };
+      const message = apiError?.data?.message ?? apiError?.data?.errors?.[0]?.message ?? apiError?.error ??
+        "We could not create your account. Please check your connection and try again.";
+      if (apiError?.data?.error === "ACCOUNT_PENDING_VERIFICATION") {
+        sessionStorage.setItem("auth_reset_identifier", email.trim().toLowerCase());
+        sessionStorage.setItem("auth_reset_method", "email");
+        sessionStorage.setItem("auth_otp_type", "ACCOUNT_VERIFY");
+        sessionStorage.setItem("auth_otp_expires_at", String(Date.now() + 10 * 60 * 1000));
+        sessionStorage.setItem("auth_otp_resend_at", String(Date.now() + 10 * 60 * 1000));
+        toast.success("This account is waiting for email verification. We sent a fresh code.");
+        navigate("/verify-otp");
+        return;
+      }
+      setFormError(Array.isArray(message) ? message.join(" ") : message);
+      toast.error(Array.isArray(message) ? message.join(" ") : message);
+    }
   };
 
   const handleSocialSignUp = (provider: string) => {
-    toast.info(`Connecting with ${provider}...`, {
-      description: `Setting up your SHOB Now account with ${provider}...`,
-    });
-    setTimeout(() => {
-      const socialUser: User = {
-        id: `user-${Date.now()}`,
-        name: `${provider} Shopper`,
-        email: `shopper@${provider.toLowerCase()}.com`,
-        role: "user",
-      };
-      const token = createMockJwt({
-        id: socialUser.id,
-        name: socialUser.name,
-        email: socialUser.email,
-        role: socialUser.role,
-      });
-      dispatch(setUser({ user: socialUser, token }));
-      localStorage.setItem("user", JSON.stringify(socialUser));
-      toast.success(`${provider} account verified! Welcome to SHOB Now.`);
-      navigate("/user-dashboard");
-    }, 600);
+    const apiEndpoint = import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1";
+    const apiOrigin = apiEndpoint.replace(/\/api\/v1\/?$/, "");
+    window.location.assign(`${apiOrigin}/api/v1/auth/oauth/${provider.toLowerCase()}`);
   };
 
   return (
@@ -120,7 +122,7 @@ const Signup: React.FC = () => {
         <h1 id="signup-title">Create Account</h1>
         <p className="signup-subtitle">Join Shop Now and discover something good.</p>
 
-        <form onSubmit={handleSubmit} className="signup-form">
+        <form onSubmit={handleSubmit} className="signup-form" noValidate>
           <div className="signup-field-grid">
             <div className="signup-field">
               <label htmlFor="signup-name">Full Name</label>
@@ -135,7 +137,6 @@ const Signup: React.FC = () => {
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
-                {isNameValid && <span className="signup-valid-mark" aria-label="Valid name">\u2713</span>}
               </div>
             </div>
 
@@ -164,12 +165,22 @@ const Signup: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
+                  aria-invalid={emailTouched && !emailFormatValid}
+                  aria-describedby={emailTouched && !emailFormatValid ? "signup-email-error" : undefined}
                 placeholder="you@example.com"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    if (formError) setFormError("");
+                  }}
+                  onBlur={() => setEmailTouched(true)}
               />
-              {isEmailValid && <span className="signup-valid-mark" aria-label="Valid email">\u2713</span>}
             </div>
+              {emailTouched && email.trim().length > 0 && !emailFormatValid && (
+                <p id="signup-email-error" className="signup-form-error" role="alert">
+                  Enter a valid email address, for example name@example.com.
+                </p>
+              )}
           </div>
 
           <div className="signup-field-grid">
@@ -182,6 +193,8 @@ const Signup: React.FC = () => {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
+                  minLength={8}
+                  maxLength={72}
                   placeholder="Create a password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -195,6 +208,13 @@ const Signup: React.FC = () => {
                   {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
                 </button>
               </div>
+              {password.length > 0 && (
+                <p className={`signup-password-hint ${passwordStrong ? "is-valid" : "is-invalid"}`} aria-live="polite">
+                  {passwordStrong
+                    ? "Strong password"
+                    : "Use 8+ characters with uppercase, lowercase, a number, and a symbol."}
+                </p>
+              )}
             </div>
 
             <div className="signup-field">
@@ -203,14 +223,21 @@ const Signup: React.FC = () => {
                 <Lock aria-hidden="true" />
                 <input
                   id="signup-confirm-password"
-                  type={showPassword ? "text" : "password"}
+                  type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
                   required
                   placeholder="Repeat password"
                   value={retypePassword}
                   onChange={(event) => setRetypePassword(event.target.value)}
                 />
-                {passwordsMatch && <span className="signup-valid-mark" aria-label="Passwords match">\u2713</span>}
+        <button
+          type="button"
+          className="signup-password-toggle"
+          onClick={() => setShowConfirmPassword((visible) => !visible)}
+          aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+        >
+          {showConfirmPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+        </button>
               </div>
             </div>
           </div>
@@ -226,9 +253,11 @@ const Signup: React.FC = () => {
             </span>
           </label>
 
-          <button type="submit" className="signup-submit" disabled={isLoading}>
+          {formError && <p className="signup-form-error" role="alert">{formError}</p>}
+
+          <button type="submit" className="signup-submit" disabled={isLoading} aria-busy={isLoading}>
             <span>{isLoading ? "Creating account..." : "Create Account"}</span>
-            {!isLoading && <ArrowRight aria-hidden="true" />}
+            {isLoading ? <LoaderCircle className="signup-loading-spinner" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}
           </button>
         </form>
 
@@ -238,11 +267,11 @@ const Signup: React.FC = () => {
           <button type="button" onClick={() => handleSocialSignUp("Google")} aria-label="Sign up with Google">
             <FcGoogle />
           </button>
-          <button type="button" onClick={() => handleSocialSignUp("GitHub")} aria-label="Sign up with GitHub">
-            <FaGithub />
+          <button type="button" onClick={() => handleSocialSignUp("Facebook")} aria-label="Sign up with Facebook">
+            <FaFacebookF className="facebook-icon" />
           </button>
-          <button type="button" onClick={() => handleSocialSignUp("Microsoft")} aria-label="Sign up with Microsoft">
-            <FaMicrosoft className="signup-microsoft-icon" />
+          <button type="button" onClick={() => handleSocialSignUp("TikTok")} aria-label="Sign up with TikTok">
+            <FaTiktok className="tiktok-icon" />
           </button>
         </div>
 

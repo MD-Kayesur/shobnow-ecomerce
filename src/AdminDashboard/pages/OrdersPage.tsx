@@ -155,18 +155,18 @@ const OrdersPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
             <ShoppingBag className="w-7 h-7 text-primary" />
             Orders Management
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Track customer orders, courier fulfillment, payments, and dispatch invoices.
           </p>
         </div>
 
         <button
           onClick={() => alert("Exporting all orders to CSV...")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#141A24] text-gray-700 dark:text-gray-200 hover:text-primary hover:border-primary/50 text-sm font-semibold shadow-xs cursor-pointer transition-all"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 hover:text-primary hover:border-primary/50 text-sm font-semibold shadow-xs cursor-pointer transition-all"
         >
           <Download className="w-4 h-4" />
           <span>Export Orders</span>
@@ -175,43 +175,43 @@ const OrdersPage = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
           <span className="text-xs text-gray-500 uppercase font-semibold">Total Revenue (Paid)</span>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">
+          <p className="text-2xl font-extrabold text-gray-900 mt-1">
             ৳{totalRevenue.toLocaleString()}
           </p>
         </div>
 
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-amber-600 dark:text-amber-400 uppercase font-semibold flex items-center gap-1">
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
+          <span className="text-xs text-amber-600 uppercase font-semibold flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" /> Pending Dispatch
           </span>
-          <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+          <p className="text-2xl font-extrabold text-amber-600 mt-1">
             {pendingCount}
           </p>
         </div>
 
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-blue-600 dark:text-blue-400 uppercase font-semibold flex items-center gap-1">
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
+          <span className="text-xs text-blue-600 uppercase font-semibold flex items-center gap-1">
             <Truck className="w-3.5 h-3.5" /> Processing / Courier
           </span>
-          <p className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 mt-1">
+          <p className="text-2xl font-extrabold text-blue-600 mt-1">
             {processingCount}
           </p>
         </div>
 
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-semibold flex items-center gap-1">
+        <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs">
+          <span className="text-xs text-emerald-600 uppercase font-semibold flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5" /> Delivered
           </span>
-          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
+          <p className="text-2xl font-extrabold text-emerald-600 mt-1">
             {deliveredCount}
           </p>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -219,12 +219,12 @@ const OrdersPage = () => {
             placeholder="Search by Order ID, customer name, phone, or location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-gray-900 dark:text-white"
+            className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-gray-900 "
           />
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl text-xs font-semibold">
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-gray-100 rounded-xl text-xs font-semibold">
           {["All", "Pending", "Processing", "Shipped", "Delivered", "Cancelled"].map((status) => (
             <button
               key={status}
@@ -232,7 +232,7 @@ const OrdersPage = () => {
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 statusFilter === status
                   ? "bg-primary text-white shadow-xs font-bold"
-                  : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                  : "text-gray-600 hover:text-gray-900 "
               }`}
             >
               {status}
@@ -242,11 +242,11 @@ const OrdersPage = () => {
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="border-b border-gray-200/80 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/40 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <tr className="border-b border-gray-200/80 bg-gray-50/70 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Order ID</th>
                 <th className="py-3.5 px-4">Customer</th>
                 <th className="py-3.5 px-4">Date</th>
@@ -256,19 +256,19 @@ const OrdersPage = () => {
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
+            <tbody className="divide-y divide-gray-100 ">
               {filteredOrders.map((order) => (
                 <tr
                   key={order.id}
-                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
+                  className="hover:bg-gray-50/50 transition-colors"
                 >
-                  <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                  <td className="py-3 px-4 font-bold text-gray-900 ">
                     #{order.id}
                   </td>
 
                   <td className="py-3 px-4">
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
+                      <p className="font-semibold text-gray-900 ">
                         {order.customerName}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -277,24 +277,24 @@ const OrdersPage = () => {
                     </div>
                   </td>
 
-                  <td className="py-3 px-4 text-xs text-gray-500 dark:text-gray-400">
+                  <td className="py-3 px-4 text-xs text-gray-500 ">
                     {order.createdAt}
                   </td>
 
-                  <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                  <td className="py-3 px-4 font-bold text-gray-900 ">
                     ৳{order.totalAmount.toLocaleString()}
                   </td>
 
                   <td className="py-3 px-4 text-xs">
                     <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                      <span className="font-semibold text-gray-700 ">
                         {order.paymentMethod}
                       </span>
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold w-fit ${
                           order.paymentStatus === "Paid"
-                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600"
-                            : "bg-amber-50 dark:bg-amber-950/40 text-amber-600"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-amber-50 text-amber-600"
                         }`}
                       >
                         {order.paymentStatus}
@@ -350,24 +350,24 @@ const OrdersPage = () => {
       {/* Order Details / Invoice Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-lg p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <span className="text-xs uppercase font-bold text-primary">Invoice Details</span>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-bold text-gray-900 ">
                   Order #{selectedOrder.id}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg cursor-pointer"
+                className="text-gray-400 hover:text-gray-600 text-lg cursor-pointer"
               >
                 &times;
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-gray-700 dark:text-gray-300">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-1">
+            <div className="space-y-3 text-xs text-gray-700 ">
+              <div className="p-3 bg-gray-50 rounded-xl space-y-1">
                 <p><strong>Customer:</strong> {selectedOrder.customerName}</p>
                 <p><strong>Phone:</strong> {selectedOrder.customerPhone}</p>
                 <p><strong>Email:</strong> {selectedOrder.customerEmail}</p>
@@ -375,8 +375,8 @@ const OrdersPage = () => {
               </div>
 
               <div>
-                <p className="font-bold text-gray-900 dark:text-white mb-2">Ordered Items:</p>
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <p className="font-bold text-gray-900 mb-2">Ordered Items:</p>
+                <div className="divide-y divide-gray-100 ">
                   {selectedOrder.items.map((item, idx) => (
                     <div key={idx} className="py-2 flex items-center justify-between">
                       <span>{item.qty}x {item.name}</span>
@@ -386,16 +386,16 @@ const OrdersPage = () => {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between text-sm font-bold text-gray-900 dark:text-white">
+              <div className="pt-2 border-t border-gray-200 flex justify-between text-sm font-bold text-gray-900 ">
                 <span>Total Amount:</span>
                 <span className="text-primary text-base">৳{selectedOrder.totalAmount.toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 ">
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 cursor-pointer"
               >
                 Close
               </button>

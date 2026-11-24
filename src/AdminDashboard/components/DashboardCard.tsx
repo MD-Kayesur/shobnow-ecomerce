@@ -50,15 +50,15 @@ const DashboardCard = () => {
         return (
           <div
             key={card.title}
-            className="p-5 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs flex flex-col justify-between transition-all hover:shadow-md hover:border-primary/30 group"
+            className="p-5 bg-white rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between transition-all hover:shadow-md hover:border-primary/30 group"
           >
             {/* Top Row: Icon + Title */}
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {card.title}
                 </p>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-1.5 font-sans tracking-tight">
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-1.5 font-sans tracking-tight">
                   {card.amount}
                 </h3>
               </div>
@@ -66,8 +66,8 @@ const DashboardCard = () => {
               <div
                 className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
                   isWarning
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50"
-                    : "bg-primary-light dark:bg-primary/15 text-primary border border-primary/20"
+                    ? "bg-amber-50 text-amber-600 border border-amber-200/50"
+                    : "bg-primary-light text-primary border border-primary/20"
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -75,17 +75,17 @@ const DashboardCard = () => {
             </div>
 
             {/* Bottom Row: Indicator & Unit */}
-            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between text-xs">
+            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
               <span
                 className={`font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
                   card.isPositive
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400"
+                    ? "bg-emerald-50 text-emerald-600 "
+                    : "bg-amber-50 text-amber-600 "
                 }`}
               >
                 {card.change}
               </span>
-              <span className="text-gray-400 dark:text-gray-500">{card.unit}</span>
+              <span className="text-gray-400 ">{card.unit}</span>
             </div>
           </div>
         );

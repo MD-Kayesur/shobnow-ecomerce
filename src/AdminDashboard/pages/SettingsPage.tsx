@@ -5,7 +5,6 @@ import {
   Save,
   Truck,
   CreditCard,
-  Palette,
   Store,
   Check,
   Lock,
@@ -86,17 +85,17 @@ const SettingsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
             <Settings className="w-7 h-7 text-primary" />
             Store Settings & Configuration
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Configure store defaults, shipping rates, payment gateways, and theme branding.
           </p>
         </div>
 
         {saved && (
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-200">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-bold border border-emerald-200">
             <Check className="w-4 h-4" />
             <span>Settings Saved Successfully!</span>
           </div>
@@ -105,120 +104,120 @@ const SettingsPage = () => {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Section 1: Store Information */}
-        <div className="p-6 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="p-6 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
             <Store className="w-5 h-5 text-primary" />
             General Store Details
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Store Name
               </label>
               <input
                 type="text"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Support Email
               </label>
               <input
                 type="email"
                 value={supportEmail}
                 onChange={(e) => setSupportEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Customer Support Hotline
               </label>
               <input
                 type="text"
                 value={supportPhone}
                 onChange={(e) => setSupportPhone(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Default Currency
               </label>
               <input
                 type="text"
                 disabled
                 value="BDT (৳) - Bangladeshi Taka"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-gray-500 cursor-not-allowed"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-100 border border-gray-200 text-gray-500 cursor-not-allowed"
               />
             </div>
           </div>
         </div>
 
         {/* Section 2: Delivery & Shipping Rates */}
-        <div className="p-6 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="p-6 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
             <Truck className="w-5 h-5 text-primary" />
             Shipping & Courier Rates (Bangladesh)
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Inside Dhaka City (৳)
               </label>
               <input
                 type="number"
                 value={insideDhakaFee}
                 onChange={(e) => setInsideDhakaFee(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Outside Dhaka / All Bangladesh (৳)
               </label>
               <input
                 type="number"
                 value={outsideDhakaFee}
                 onChange={(e) => setOutsideDhakaFee(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Free Delivery Above (৳)
               </label>
               <input
                 type="number"
                 value={freeShippingThreshold}
                 onChange={(e) => setFreeShippingThreshold(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
         </div>
 
         {/* Section 3: Payment Gateways */}
-        <div className="p-6 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="p-6 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-3">
             <CreditCard className="w-5 h-5 text-primary" />
             Payment Gateway Integrations
           </h2>
 
           <div className="space-y-3">
-            <label className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 cursor-pointer">
+            <label className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer">
               <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                <p className="text-sm font-bold text-gray-900 ">
                   SSLCommerz Payment Gateway
                 </p>
                 <p className="text-xs text-gray-500">
@@ -233,9 +232,9 @@ const SettingsPage = () => {
               />
             </label>
 
-            <label className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 cursor-pointer">
+            <label className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 cursor-pointer">
               <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                <p className="text-sm font-bold text-gray-900 ">
                   Cash on Delivery (COD)
                 </p>
                 <p className="text-xs text-gray-500">
@@ -249,27 +248,6 @@ const SettingsPage = () => {
                 className="w-5 h-5 accent-primary cursor-pointer"
               />
             </label>
-          </div>
-        </div>
-
-        {/* Section 4: Brand Theme & Color Sync */}
-        <div className="p-6 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
-            <Palette className="w-5 h-5 text-primary" />
-            Live Storefront Color Theme Synchronization
-          </h2>
-
-          <div className="p-4 rounded-xl bg-primary-light/50 border border-primary/20 space-y-2">
-            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-              The Admin Panel is dynamically linked to your storefront CSS variables in{" "}
-              <code className="text-primary font-mono font-bold">src/index.css</code>.
-            </p>
-            <div className="flex items-center gap-3 pt-1">
-              <span className="w-6 h-6 rounded-lg bg-primary shadow-xs border border-white" />
-              <span className="text-xs font-mono font-bold text-primary">
-                --color-primary (Current Active Brand Theme)
-              </span>
-            </div>
           </div>
         </div>
 
@@ -289,29 +267,29 @@ const SettingsPage = () => {
       <form
         id="security-password-section"
         onSubmit={handleAdminPasswordChange}
-        className="p-6 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-5 transition-colors"
+        className="p-6 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-5 transition-colors"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-800 pb-3">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <KeyRound className="w-5 h-5 text-primary" />
             Admin Security & Change Password
           </h2>
-          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+          <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 inline" /> Super Admin Access Protection
           </span>
         </div>
 
         {/* Inline Alerts */}
         {adminPasswordError && (
-          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 " />
             <span>{adminPasswordError}</span>
           </div>
         )}
 
         {adminPasswordSuccess && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-2">
-            <Check className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+            <Check className="w-4 h-4 shrink-0 text-emerald-600 " />
             <span>Admin password updated successfully! Please keep your administrator credentials secure.</span>
           </div>
         )}
@@ -320,7 +298,7 @@ const SettingsPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           {/* Current Admin Password */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Current Admin Password
             </label>
             <div className="relative">
@@ -332,7 +310,7 @@ const SettingsPage = () => {
                   if (adminPasswordError) setAdminPasswordError("");
                 }}
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
                 required
               />
               <button
@@ -348,7 +326,7 @@ const SettingsPage = () => {
 
           {/* New Admin Password */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               New Admin Password
             </label>
             <div className="relative">
@@ -360,7 +338,7 @@ const SettingsPage = () => {
                   if (adminPasswordError) setAdminPasswordError("");
                 }}
                 placeholder="At least 6 characters"
-                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
                 required
               />
               <button
@@ -376,7 +354,7 @@ const SettingsPage = () => {
 
           {/* Confirm New Admin Password */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
               Confirm New Admin Password
             </label>
             <div className="relative">
@@ -388,7 +366,7 @@ const SettingsPage = () => {
                   if (adminPasswordError) setAdminPasswordError("");
                 }}
                 placeholder="Re-type new password"
-                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-900 focus:outline-hidden focus:ring-2 focus:ring-primary/20 text-xs"
                 required
               />
               <button
@@ -406,13 +384,13 @@ const SettingsPage = () => {
         {/* Guideline Footnote & Action Button */}
         <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <p className="text-[11px] text-gray-400">
-            🔒 Administrative passwords must be strong and distinct. All administrative sessions are logged for audit compliance.
+            Security: Administrative passwords must be strong and distinct. All administrative sessions are logged for audit compliance.
           </p>
 
           <button
             type="submit"
             disabled={isAdminChangingPassword}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 text-xs font-bold shadow-xs hover:bg-amber-600 hover:text-white transition-all cursor-pointer disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold shadow-xs hover:bg-amber-600 hover:text-white transition-all cursor-pointer disabled:opacity-60"
           >
             <Lock className="w-3.5 h-3.5" />
             <span>{isAdminChangingPassword ? "Updating..." : "Update Admin Password"}</span>

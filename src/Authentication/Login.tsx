@@ -3,82 +3,45 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
-import { FaGithub, FaMicrosoft } from "react-icons/fa";
+import { FaFacebookF, FaTiktok } from "react-icons/fa";
 import { toast } from "sonner";
-import { useAppDispatch } from "@/redux/hooks/redux-hook";
-import { setUser } from "@/redux/features/auth/authSlice";
-import { User } from "@/redux/types/auth.type";
+import { useLoginMutation } from "@/redux/features/auth/authApi";
+import { OtpType } from "@/redux/types/auth.type";
 import "./Login.css";
 
-const createMockJwt = (payload: {
-  id: string;
-  name: string;
-  email: string;
-  role: User["role"];
-}) => {
-  try {
-    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-    const body = btoa(
-      JSON.stringify({
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 86400 * 7,
-        ...payload,
-      }),
-    );
-    return `${header}.${body}.signature`;
-  } catch {
-    return "mock-jwt-token";
-  }
-};
-
 const Login: React.FC = () => {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [login, { isLoading }] = useLoginMutation();
 
-  const handleRoleLogin = (role: "admin" | "user") => {
-    setIsLoading(true);
-    const userEmail = email.trim() || (role === "admin" ? "admin@shopnow.com" : "user@shopnow.com");
-    const userName = role === "admin" ? "System Admin" : "Valued Customer";
-    const user: User = {
-      id: role === "admin" ? "admin-01" : "user-01",
-      name: userName,
-      email: userEmail,
-      role,
-    };
-    const token = createMockJwt({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
-
-    dispatch(setUser({ user, token }));
-    localStorage.setItem("user", JSON.stringify(user));
-    const targetRoute = role === "admin" ? "/admin-dashboard" : "/user-dashboard";
-    toast.success(`Welcome back, ${user.name}!`, {
-      description: `Authenticated as ${role.toUpperCase()}. Redirecting to your dashboard...`,
-    });
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate(targetRoute);
-    }, 400);
-  };
-
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const role = email.toLowerCase().includes("admin") ? "admin" : "user";
-    handleRoleLogin(role);
+    try {
+      const response = await login({ email: email.trim().toLowerCase(), password }).unwrap();
+      const type: OtpType = response.data.requiresVerification ? "ACCOUNT_VERIFY" : "LOGIN";
+      const deadline = Date.now() + 10 * 60 * 1000;
+      sessionStorage.setItem("auth_reset_identifier", (response.data.email || email).trim().toLowerCase());
+      sessionStorage.setItem("auth_reset_method", "email");
+      sessionStorage.setItem("auth_otp_type", type);
+      sessionStorage.setItem("auth_otp_expires_at", String(deadline));
+      sessionStorage.setItem("auth_otp_resend_at", String(deadline));
+      if (response.data.challengeId) sessionStorage.setItem("auth_otp_challenge_id", response.data.challengeId);
+      else sessionStorage.removeItem("auth_otp_challenge_id");
+      toast.success(type === "LOGIN" ? "Check your email for the login code." : "Verify your email to finish signing in.");
+      navigate("/verify-otp");
+    } catch (error) {
+      const apiError = error as { data?: { message?: string | string[] }; error?: string };
+      const message = apiError.data?.message ?? apiError.error ?? "Unable to sign in. Check your details and try again.";
+      toast.error(Array.isArray(message) ? message.join(" ") : message);
+    }
   };
 
   const handleSocialSignIn = (provider: string) => {
-    toast.info(`Connecting with ${provider}...`, {
-      description: `Authenticating via ${provider} Single Sign-On...`,
-    });
-    setTimeout(() => handleRoleLogin("user"), 600);
+    const apiEndpoint = import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1";
+    const apiOrigin = apiEndpoint.replace(/\/api\/v1\/?$/, "");
+    window.location.assign(`${apiOrigin}/api/v1/auth/oauth/${provider.toLowerCase()}`);
   };
 
   return (
@@ -148,11 +111,11 @@ const Login: React.FC = () => {
           <button type="button" onClick={() => handleSocialSignIn("Google")} aria-label="Continue with Google">
             <FcGoogle />
           </button>
-          <button type="button" onClick={() => handleSocialSignIn("GitHub")} aria-label="Continue with GitHub">
-            <FaGithub className="github-icon" />
+          <button type="button" onClick={() => handleSocialSignIn("Facebook")} aria-label="Continue with Facebook">
+            <FaFacebookF className="facebook-icon" />
           </button>
-          <button type="button" onClick={() => handleSocialSignIn("Microsoft")} aria-label="Continue with Microsoft">
-            <FaMicrosoft className="microsoft-icon" />
+          <button type="button" onClick={() => handleSocialSignIn("TikTok")} aria-label="Continue with TikTok">
+            <FaTiktok className="tiktok-icon" />
           </button>
         </div>
 

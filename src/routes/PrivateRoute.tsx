@@ -4,9 +4,10 @@ import { ReactNode } from "react";
 import { useAppSelector } from "@/redux/hooks/redux-hook";
 
 const PrivateRoute = ({ children }: { children: ReactNode }) => {
-  const token = useAppSelector((state) => state.auth.token);
+  const { token, isInitialized } = useAppSelector((state) => state.auth);
   const location = useLocation();
 
+  if (!isInitialized) return <div role="status" className="auth-session-loading">Restoring your secure session…</div>;
   if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

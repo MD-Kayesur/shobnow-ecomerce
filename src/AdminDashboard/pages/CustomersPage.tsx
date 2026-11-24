@@ -1,279 +1,99 @@
-// src/pages/Admin/CustomersPage.tsx
-import { useState, useMemo } from "react";
-import { Users, Search, Crown, Mail, Phone, MapPin, UserPlus } from "lucide-react";
+import { useMemo, useState, type ReactNode } from 'react';
+import { CheckCircle2, Clock3, Edit3, Eye, LayoutGrid, List, LoaderCircle, Mail, Phone, Search, ShieldCheck, Users } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ManagedUser, ManagedUserDetail, UserStatus, useGetManagedUserQuery, useGetManagedUsersQuery, useUpdateManagedUserMutation } from '@/redux/features/admin/usersApi';
+import { Link } from 'react-router-dom';
 
-export interface CustomerItem {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  city: string;
-  totalOrders: number;
-  totalSpent: number;
-  status: "VIP" | "Active" | "Inactive";
-  joinedDate: string;
+const labelStatus = (status: UserStatus) => String(status).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char: string) => char.toUpperCase());
+const dateLabel = (date?: string | null) => date ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(date)) : 'Never';
+const money = (value: string | number) => `BDT ${Number(value).toLocaleString()}`;
+const statusClass = (status: UserStatus) => status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' : status === 'PENDING_VERIFICATION' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600';
+
+function getListErrorMessage(error: unknown) {
+  const apiError = error as { status?: string | number; error?: string; data?: { message?: string } } | undefined;
+  if (!apiError) return 'Could not load users. Please try again.';
+  if (apiError.status === 'FETCH_ERROR') return 'The API server is unreachable. Confirm that the backend is running and VITE_API_ENDPOINT points to it.';
+  if (apiError.status === 401) return 'Your admin session is missing or expired. Sign in with an admin account, then retry.';
+  if (apiError.status === 403) return 'This account does not have admin access.';
+  if (apiError.status === 404) return 'The running backend does not have the admin users route yet. Restart it from the current source, then retry.';
+  return apiError.data?.message || apiError.error || `Could not load users (HTTP ${apiError.status ?? 'unknown'}).`;
 }
 
-const INITIAL_CUSTOMERS: CustomerItem[] = [
-  {
-    id: "CUST-001",
-    name: "Ayesha Rahman",
-    email: "ayesha.r@gmail.com",
-    phone: "+880 1712-345678",
-    city: "Dhaka (Dhanmondi)",
-    totalOrders: 14,
-    totalSpent: 42800,
-    status: "VIP",
-    joinedDate: "Jan 12, 2026",
-  },
-  {
-    id: "CUST-002",
-    name: "Farhana Islam",
-    email: "farhana.isl@outlook.com",
-    phone: "+880 1819-876543",
-    city: "Chittagong (Nasirabad)",
-    totalOrders: 8,
-    totalSpent: 22400,
-    status: "Active",
-    joinedDate: "Feb 28, 2026",
-  },
-  {
-    id: "CUST-003",
-    name: "Tasnim Chowdhury",
-    email: "tasnim.chy@gmail.com",
-    phone: "+880 1678-112233",
-    city: "Dhaka (Gulshan 2)",
-    totalOrders: 19,
-    totalSpent: 64900,
-    status: "VIP",
-    joinedDate: "Nov 04, 2025",
-  },
-  {
-    id: "CUST-004",
-    name: "Nusrat Jahan",
-    email: "nusrat.jahan@yahoo.com",
-    phone: "+880 1911-445566",
-    city: "Sylhet (Zindabazar)",
-    totalOrders: 5,
-    totalSpent: 11200,
-    status: "Active",
-    joinedDate: "Apr 15, 2026",
-  },
-  {
-    id: "CUST-005",
-    name: "Sabrina Hossain",
-    email: "sabrina.h@gmail.com",
-    phone: "+880 1722-998877",
-    city: "Dhaka (Uttara)",
-    totalOrders: 2,
-    totalSpent: 3500,
-    status: "Active",
-    joinedDate: "Oct 19, 2026",
-  },
-  {
-    id: "CUST-006",
-    name: "Mehnaz Akter",
-    email: "mehnaz.akter@gmail.com",
-    phone: "+880 1552-334455",
-    city: "Rajshahi (Shaheb Bazar)",
-    totalOrders: 1,
-    totalSpent: 1850,
-    status: "Inactive",
-    joinedDate: "Aug 02, 2026",
-  },
-];
+function Empty({ children }: { children: ReactNode }) {
+  return <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">{children}</div>;
+}
+
+function UserDetails({ user }: { user: ManagedUserDetail }) {
+  const [tab, setTab] = useState<'overview' | 'activity' | 'errors' | 'orders' | 'devices'>('overview');
+  const tabs = ['overview', 'activity', 'errors', 'orders', 'devices'] as const;
+  return <div className="space-y-4">
+    <nav className="flex flex-wrap gap-2 border-b border-[#f5dce8] pb-3">{tabs.map((item) => <button key={item} onClick={() => setTab(item)} className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition-colors ${tab === item ? 'bg-[#e72c7e] text-white shadow-sm' : 'bg-[#fff0f6] text-[#171b4b] hover:bg-[#ffe2ee]'}`}>{item}{item === 'activity' ? ` (${user._count.activityLogs})` : item === 'errors' ? ` (${user._count.errorLogs})` : ''}</button>)}</nav>
+    {tab === 'overview' && <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">{[
+        ['Account ID', user.id], ['Email', user.email || 'Not provided'], ['Phone', user.phoneNumber || 'Not provided'], ['Role / status', `${user.role} · ${labelStatus(user.status)}`], ['Email verified', user.emailVerifiedAt ? dateLabel(user.emailVerifiedAt) : 'Not verified'], ['Joined', dateLabel(user.createdAt)], ['Last login', dateLabel(user.lastLoginAt)], ['Last updated', dateLabel(user.updatedAt)],
+      ].map(([name, value]) => <div key={name} className="rounded-xl border border-[#f5dce8] bg-[#fff9fc] p-3"><p className="text-[11px] font-semibold uppercase text-[#747997]">{name}</p><p className="mt-1 break-all text-sm font-medium text-[#171b4b]">{value}</p></div>)}</div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[['Orders', user.orderSummary.count], ['Lifetime spend', money(user.orderSummary.totalSpent)], ['Wishlist', user._count.wishlistItems], ['Saved looks', user._count.savedLooks], ['Try-on sessions', user._count.tryOnSessions], ['Cosmetic chats', user._count.cosmeticChatSessions], ['Activities', user._count.activityLogs], ['Errors', user._count.errorLogs]].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-slate-100 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-bold text-slate-900">{value}</p></div>)}</div>
+    </div>}
+    {tab === 'activity' && <div className="space-y-3"><div className="max-h-[44vh] space-y-2 overflow-auto">{user.activityLogs.length ? user.activityLogs.map((log) => <article key={log.id} className="rounded-xl border border-slate-100 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-slate-800">{log.category} · {log.action}</p><time className="text-xs text-slate-500">{dateLabel(log.createdAt)}</time></div><p className="mt-1 break-all text-sm text-slate-600">{log.description || `${log.method || ''} ${log.path}`}</p><p className="mt-1 break-all text-xs text-slate-500">IP {log.ipAddress || '—'} · Visitor {log.visitorId || '—'} · Request {log.requestId || '—'}</p></article>) : <Empty>No activity logs recorded.</Empty>}</div><Link to={`/admin-dashboard/activity-logs?userId=${encodeURIComponent(user.id)}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[#e72c7e]">View all activity logs <Eye size={14}/></Link></div>}
+    {tab === 'errors' && <div className="space-y-3"><div className="max-h-[44vh] space-y-2 overflow-auto">{user.errorLogs.length ? user.errorLogs.map((log) => <article key={log.id} className="rounded-xl border border-red-100 bg-red-50/30 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-red-800">{log.errorCode} · HTTP {log.statusCode}</p><time className="text-xs text-slate-500">{dateLabel(log.createdAt)}</time></div><p className="mt-1 text-sm text-slate-700">{log.message}</p><p className="mt-1 break-all text-xs text-slate-500">{log.method} {log.path} · IP {log.ipAddress || '—'} · Request {log.requestId}</p></article>) : <Empty>No error logs recorded for this user.</Empty>}</div><Link to={`/admin-dashboard/error-logs?userId=${encodeURIComponent(user.id)}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[#e72c7e]">View all error logs <Eye size={14}/></Link></div>}
+    {tab === 'orders' && <div className="max-h-[48vh] overflow-auto">{user.orders.length ? <table className="w-full text-left text-sm"><thead className="text-xs text-slate-500"><tr><th className="p-2">Order</th><th className="p-2">Status</th><th className="p-2">Payment</th><th className="p-2">Total</th><th className="p-2">Date</th></tr></thead><tbody className="divide-y">{user.orders.map((order) => <tr key={order.id}><td className="p-2">{order.orderNumber}</td><td className="p-2">{labelStatus(order.status as UserStatus)}</td><td className="p-2">{labelStatus(order.paymentStatus as UserStatus)}</td><td className="p-2">{money(order.total)}</td><td className="p-2">{dateLabel(order.createdAt)}</td></tr>)}</tbody></table> : <Empty>No orders recorded.</Empty>}</div>}
+    {tab === 'devices' && <div className="max-h-[48vh] space-y-2 overflow-auto">{user.devices.length ? user.devices.map(({ device, firstLinkedAt, lastLinkedAt }) => <article key={device.id} className="rounded-xl border border-slate-100 p-3"><p className="break-all text-xs font-mono text-slate-500">Device {device.id}</p><p className="mt-1 text-sm">Last IP: {device.lastIpAddress || '—'}</p><p className="mt-1 text-xs text-slate-500">First seen {dateLabel(firstLinkedAt || device.firstSeenAt)} · Last seen {dateLabel(lastLinkedAt || device.lastSeenAt)}</p><p className="mt-1 break-all text-xs text-slate-500">{device.lastUserAgent || 'User agent unavailable'}</p></article>) : <Empty>No linked devices recorded.</Empty>}</div>}
+  </div>;
+}
 
 const CustomersPage = () => {
-  const [customers] = useState<CustomerItem[]>(INITIAL_CUSTOMERS);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-
-  const filteredCustomers = useMemo(() => {
-    return customers.filter((cust) => {
-      const matchesSearch =
-        cust.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cust.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cust.phone.includes(searchTerm) ||
-        cust.city.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus = statusFilter === "All" || cust.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [customers, searchTerm, statusFilter]);
-
-  const vipCount = customers.filter((c) => c.status === "VIP").length;
-  const activeCount = customers.filter((c) => c.status === "Active").length;
-  const totalSpendAll = customers.reduce((sum, c) => sum + c.totalSpent, 0);
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-primary" />
-            Customers Management
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Registered customer accounts, purchase loyalty, total spend, and contact records.
-          </p>
-        </div>
-
-        <button
-          onClick={() => alert("Customer invitation link copied to clipboard!")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white hover:bg-primary-hover font-semibold text-sm shadow-md transition-all cursor-pointer"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Invite Customer</span>
-        </button>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-gray-500 uppercase font-semibold">Total Accounts</span>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-white mt-1">{customers.length}</p>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-amber-600 dark:text-amber-400 uppercase font-semibold flex items-center gap-1">
-            <Crown className="w-3.5 h-3.5" /> VIP Customers
-          </span>
-          <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">{vipCount}</p>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 uppercase font-semibold">
-            Active Buyers
-          </span>
-          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{activeCount}</p>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs">
-          <span className="text-xs text-primary uppercase font-semibold">Lifetime Customer Value</span>
-          <p className="text-2xl font-extrabold text-primary mt-1">
-            ৳{totalSpendAll.toLocaleString()}
-          </p>
-        </div>
-      </div>
-
-      {/* Search Toolbar */}
-      <div className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search customer by name, email, phone, or location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-gray-900 dark:text-white"
-          />
-        </div>
-
-        <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-xl text-xs font-semibold">
-          {["All", "VIP", "Active", "Inactive"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                statusFilter === status
-                  ? "bg-primary text-white shadow-xs font-bold"
-                  : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Customers Table */}
-      <div className="bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-gray-200/80 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/40 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Customer Name</th>
-                <th className="py-3.5 px-4">Contact Info</th>
-                <th className="py-3.5 px-4">Location</th>
-                <th className="py-3.5 px-4">Orders</th>
-                <th className="py-3.5 px-4">Total Spent</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4">Joined Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
-              {filteredCustomers.map((cust) => (
-                <tr
-                  key={cust.id}
-                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
-                >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-light text-primary font-bold flex items-center justify-center shrink-0 border border-primary/20">
-                        {cust.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
-                          {cust.name}
-                          {cust.status === "VIP" && (
-                            <Crown className="w-3.5 h-3.5 text-amber-500 inline" />
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-400">{cust.id}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="py-3 px-4 text-xs">
-                    <p className="text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5 text-gray-400" /> {cust.email}
-                    </p>
-                    <p className="text-gray-500 mt-0.5 flex items-center gap-1">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" /> {cust.phone}
-                    </p>
-                  </td>
-
-                  <td className="py-3 px-4 text-xs text-gray-600 dark:text-gray-300">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-gray-400" /> {cust.city}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 font-semibold text-gray-900 dark:text-white">
-                    {cust.totalOrders} orders
-                  </td>
-
-                  <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
-                    ৳{cust.totalSpent.toLocaleString()}
-                  </td>
-
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                        cust.status === "VIP"
-                          ? "bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50"
-                          : cust.status === "Active"
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-500"
-                      }`}
-                    >
-                      {cust.status}
-                    </span>
-                  </td>
-
-                  <td className="py-3 px-4 text-xs text-gray-500 dark:text-gray-400">
-                    {cust.joinedDate}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+  const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'' | UserStatus>('');
+  const [page, setPage] = useState(1);
+  const [view, setView] = useState<'table' | 'cards'>('table');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<ManagedUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phoneNumber: '', status: 'ACTIVE' as UserStatus });
+  const [saveError, setSaveError] = useState('');
+  const query = useGetManagedUsersQuery(
+    { page, limit: 12, search: search || undefined, status: status || undefined },
+    { refetchOnMountOrArgChange: true, refetchOnFocus: true },
   );
+  const detailQuery = useGetManagedUserQuery(selectedId ?? '', { skip: !selectedId });
+  const [updateUser, updateState] = useUpdateManagedUserMutation();
+  const users = query.data?.data ?? [];
+  const summary = query.data?.meta.summary;
+  const meta = query.data?.meta;
+  const selectedDetail = detailQuery.data?.data;
+  const headingLabel = useMemo(() => status ? labelStatus(status) : 'All users', [status]);
+
+  const applySearch = () => { setPage(1); setSearch(searchText.trim()); };
+  const openEdit = (user: ManagedUser) => { setEditTarget(user); setEditForm({ name: user.name ?? '', phoneNumber: user.phoneNumber ?? '', status: user.status }); setSaveError(''); };
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    try {
+      setSaveError('');
+      await updateUser({ id: editTarget.id, body: { name: editForm.name.trim() || undefined, phoneNumber: editForm.phoneNumber.trim() || undefined, status: editForm.status } }).unwrap();
+      setEditTarget(null);
+    } catch { setSaveError('Could not update this account. Check your admin access and try again.'); }
+  };
+
+  return <section className="space-y-5 pb-8">
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Account administration</p><h1 className="mt-1 flex items-center gap-2 text-2xl font-extrabold text-slate-900 sm:text-3xl"><Users className="h-7 w-7 text-primary" />Users & Activity</h1><p className="mt-1 text-sm text-slate-500">Review customer accounts, status, orders, activity, and errors. Admin accounts are excluded.</p></div><span className="rounded-xl border border-pink-100 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">{query.isFetching ? 'Loading…' : `${meta?.total ?? 0} ${headingLabel.toLowerCase()}`}</span></header>
+
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[
+      { label: 'Total users', value: summary?.total ?? '—', icon: Users, color: 'text-primary' },
+      { label: 'Active', value: summary?.active ?? '—', icon: CheckCircle2, color: 'text-emerald-600' },
+      { label: 'Inactive / blocked', value: summary?.inactive ?? '—', icon: ShieldCheck, color: 'text-slate-600' },
+      { label: 'Verification pending', value: summary?.pendingVerification ?? '—', icon: Clock3, color: 'text-amber-600' },
+    ].map(({ label, value, icon: Icon, color }) => <article key={label} className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span><Icon className={`h-4 w-4 ${color}`} /></div><p className={`mt-2 text-2xl font-extrabold ${color}`}>{value}</p></article>)}</div>
+
+    <div className="flex flex-col gap-3 rounded-2xl border border-pink-100 bg-white p-4 shadow-sm lg:flex-row lg:items-center"><label className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"/><input value={searchText} onChange={(event) => setSearchText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && applySearch()} placeholder="Search by name, email, phone, or user ID" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-primary"/></label><select value={status} onChange={(event) => { setStatus(event.target.value as '' | UserStatus); setPage(1); }} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">All statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="SUSPEND">Suspended</option><option value="BLOCK">Blocked</option><option value="PENDING_VERIFICATION">Pending verification</option></select><button onClick={applySearch} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">Search</button><div className="flex rounded-lg border border-slate-200 p-1"><button onClick={() => setView('table')} aria-label="Table view" className={`rounded-md p-2 ${view === 'table' ? 'bg-primary text-white' : 'text-slate-500'}`}><List size={16}/></button><button onClick={() => setView('cards')} aria-label="Card view" className={`rounded-md p-2 ${view === 'cards' ? 'bg-primary text-white' : 'text-slate-500'}`}><LayoutGrid size={16}/></button></div></div>
+
+    {query.isError ? <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between"><p>{getListErrorMessage(query.error)}</p><button onClick={() => query.refetch()} className="shrink-0 rounded-lg border border-red-200 bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-100">Retry</button></div> : query.isLoading ? <div className="flex items-center justify-center gap-2 rounded-2xl border border-pink-100 bg-white p-12 text-sm text-slate-500"><LoaderCircle className="h-5 w-5 animate-spin text-primary"/>Loading users…</div> : users.length === 0 ? <Empty>No non-admin users match these filters.</Empty> : view === 'table' ? <div className="overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[920px] text-left text-sm"><thead className="bg-pink-50/70 text-[11px] uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">User</th><th className="px-4 py-3">Contact</th><th className="px-4 py-3">Orders / wishlist</th><th className="px-4 py-3">Activity / errors</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Last login</th><th className="px-4 py-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{users.map((user) => <tr key={user.id} className="hover:bg-pink-50/30"><td className="px-4 py-3"><div className="flex items-center gap-3">{user.avatar ? <img src={user.avatar} alt="" className="h-10 w-10 rounded-full object-cover"/> : <div className="grid h-10 w-10 place-items-center rounded-full border border-pink-100 bg-pink-50 font-bold text-primary">{(user.name || user.email || 'U').slice(0, 2).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate font-semibold text-slate-900">{user.name || 'Name not provided'}</p><p className="truncate text-xs text-slate-400">{user.id}</p></div></div></td><td className="px-4 py-3 text-xs"><p className="flex items-center gap-1.5 text-slate-700"><Mail size={13}/>{user.email || '—'}</p><p className="mt-1 flex items-center gap-1.5 text-slate-500"><Phone size={13}/>{user.phoneNumber || '—'}</p></td><td className="px-4 py-3 text-xs text-slate-700">{user._count.orders} orders · {user._count.wishlistItems} wishlist items</td><td className="px-4 py-3 text-xs text-slate-700">{user._count.activityLogs} activities · <span className={user._count.errorLogs ? 'text-red-600' : ''}>{user._count.errorLogs} errors</span></td><td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(user.status)}`}>{labelStatus(user.status)}</span></td><td className="px-4 py-3 text-xs text-slate-500">{dateLabel(user.lastLoginAt)}</td><td className="px-4 py-3"><div className="flex gap-2"><button onClick={() => setSelectedId(user.id)} className="inline-flex items-center gap-1 rounded-lg border border-pink-100 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-pink-50"><Eye size={14}/>View</button><button onClick={() => openEdit(user)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"><Edit3 size={14}/>Edit</button></div></td></tr>)}</tbody></table></div></div> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{users.map((user) => <article key={user.id} className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3">{user.avatar ? <img src={user.avatar} alt="" className="h-11 w-11 rounded-full object-cover"/> : <div className="grid h-11 w-11 place-items-center rounded-full bg-pink-50 font-bold text-primary">{(user.name || user.email || 'U').slice(0,2).toUpperCase()}</div>}<div className="min-w-0"><p className="truncate font-bold text-slate-900">{user.name || 'Name not provided'}</p><p className="truncate text-xs text-slate-500">{user.email || 'No email address'}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(user.status)}`}>{labelStatus(user.status)}</span></div><div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600"><p><Phone className="mr-1 inline" size={13}/>{user.phoneNumber || 'No phone number'}</p><p>Orders: {user._count.orders}</p><p>Activity: {user._count.activityLogs}</p><p className={user._count.errorLogs ? 'text-red-600' : ''}>Errors: {user._count.errorLogs}</p><p className="col-span-2">Last login: {dateLabel(user.lastLoginAt)}</p></div><div className="mt-4 flex gap-2"><button onClick={() => setSelectedId(user.id)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white"><Eye size={14}/>View details</button><button onClick={() => openEdit(user)} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"><Edit3 size={14}/>Edit</button></div></article>)}</div>}
+
+    {meta && meta.totalPages > 1 && <footer className="flex items-center justify-between rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm shadow-sm"><span className="text-slate-500">Page {meta.page} / {meta.totalPages} · {meta.total} users</span><div className="flex gap-2"><button disabled={!meta.hasPreviousPage} onClick={() => setPage((current) => Math.max(1, current - 1))} className="rounded-lg border px-3 py-2 disabled:opacity-40">Previous</button><button disabled={!meta.hasNextPage} onClick={() => setPage((current) => current + 1)} className="rounded-lg border px-3 py-2 disabled:opacity-40">Next</button></div></footer>}
+
+    <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}><DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-[#e72c7e] bg-white text-[#171b4b] shadow-[0_32px_100px_rgba(23,27,75,0.42)] ring-1 ring-[#f5dce8] sm:max-w-4xl"><DialogHeader><DialogTitle className="flex items-center gap-2 text-[#171b4b]"><Users className="h-5 w-5 text-[#e72c7e]"/>{selectedDetail?.name || selectedDetail?.email || 'User details'}</DialogTitle><DialogDescription className="text-[#747997]">Account profile, order totals, activity history, and recorded errors. Password and token data are never exposed.</DialogDescription></DialogHeader>{detailQuery.isFetching ? <div className="flex items-center gap-2 py-12 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin"/>Loading account details…</div> : selectedDetail ? <UserDetails user={selectedDetail}/> : <Empty>Could not load this account's details.</Empty>}</DialogContent></Dialog>
+
+    <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}><DialogContent className="rounded-2xl border-2 border-[#e72c7e] bg-white text-[#171b4b] shadow-[0_32px_100px_rgba(23,27,75,0.42)] ring-1 ring-[#f5dce8] sm:max-w-lg"><DialogHeader><DialogTitle className="text-[#171b4b]">Edit user account</DialogTitle><DialogDescription className="text-[#747997]">Update the user's name, phone number, or account status. Email, role, password, and tokens cannot be changed here.</DialogDescription></DialogHeader><div className="space-y-4"><label className="block text-sm font-medium text-slate-700">Name<input value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5" maxLength={100}/></label><label className="block text-sm font-medium text-slate-700">Phone number<input value={editForm.phoneNumber} onChange={(event) => setEditForm({ ...editForm, phoneNumber: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5" maxLength={20}/></label><label className="block text-sm font-medium text-slate-700">Account status<select value={editForm.status} onChange={(event) => setEditForm({ ...editForm, status: event.target.value as UserStatus })} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5">{(['ACTIVE','INACTIVE','PENDING_VERIFICATION','SUSPEND','BLOCK'] as UserStatus[]).map((item) => <option key={item} value={item}>{labelStatus(item)}</option>)}</select></label>{saveError && <p className="text-sm text-red-600">{saveError}</p>}<button disabled={updateState.isLoading} onClick={saveEdit} className="w-full rounded-xl bg-[#e72c7e] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#cf1768] disabled:opacity-60">{updateState.isLoading ? 'Saving changes…' : 'Save changes'}</button></div></DialogContent></Dialog>
+  </section>;
 };
 
 export default CustomersPage;
-
