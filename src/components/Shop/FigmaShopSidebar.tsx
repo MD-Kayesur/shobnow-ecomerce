@@ -1,419 +1,91 @@
-import React, { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronRight } from "lucide-react";
-import { ShopFilterState, SIDEBAR_BRANDS } from "@/data/shopData";
+import React, { useMemo, useState } from "react";
+import { Search, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { ShopFilterState } from "@/data/shopData";
+import type { StoreBrand, StoreCategory } from "@/redux/features/storefront/storefrontApi";
+
+const imageUrl = (value?: string | null) => {
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1").replace(/\/api\/v\d+\/?$/, "");
+  return `${apiOrigin}${value.startsWith("/") ? "" : "/"}${value}`;
+};
 
 export interface FigmaShopSidebarProps {
   filters: ShopFilterState;
+  categories: StoreCategory[];
+  brands: StoreBrand[];
+  minPrice: number;
+  maxPrice: number;
   onFilterChange: (newFilters: Partial<ShopFilterState>) => void;
   onResetFilters: () => void;
   className?: string;
 }
 
-export const FigmaShopSidebar: React.FC<FigmaShopSidebarProps> = ({
-  filters,
-  onFilterChange,
-  className = "",
-}) => {
-  const [openCategory, setOpenCategory] = useState<string>("jewellery");
+export const FigmaShopSidebar: React.FC<FigmaShopSidebarProps> = ({ filters, categories, brands, minPrice, maxPrice, onFilterChange, onResetFilters, className = "" }) => {
+  const [openCategory, setOpenCategory] = useState(filters.category || "");
   const [brandSearch, setBrandSearch] = useState("");
+  const filteredBrands = useMemo(() => brands.filter((brand) => brand.name.toLowerCase().includes(brandSearch.trim().toLowerCase())), [brands, brandSearch]);
+  const safeMax = Math.max(minPrice + 1, maxPrice);
+  const lowPercent = ((filters.priceRange[0] - minPrice) / (safeMax - minPrice)) * 100;
+  const highPercent = ((filters.priceRange[1] - minPrice) / (safeMax - minPrice)) * 100;
+  const selectedBrand = filters.selectedBrands[0] || "";
 
-  const minPrice = 30;
-  const maxPrice = 25000;
-  const currentMin = filters.priceRange ? filters.priceRange[0] : minPrice;
-  const currentMax = filters.priceRange ? filters.priceRange[1] : maxPrice;
-
-  const minPercent = Math.min(
-    100,
-    Math.max(0, ((currentMin - minPrice) / (maxPrice - minPrice)) * 100)
-  );
-  const maxPercent = Math.min(
-    100,
-    Math.max(0, ((currentMax - minPrice) / (maxPrice - minPrice)) * 100)
-  );
-
-  const filteredBrands = useMemo(() => {
-    if (!brandSearch.trim()) return SIDEBAR_BRANDS;
-    return SIDEBAR_BRANDS.filter((b) =>
-      b.name.toLowerCase().includes(brandSearch.toLowerCase())
-    );
-  }, [brandSearch]);
-
-  const toggleCategory = (cat: string) => {
-    setOpenCategory((prev) => (prev === cat ? "" : cat));
-  };
-
-  const handleBrandSelect = (brandName: string) => {
-    const isAlreadySelected = filters.selectedBrands.includes(brandName);
-    onFilterChange({
-      selectedBrands: isAlreadySelected ? [] : [brandName],
-    });
-  };
-
-  return (
-    <aside
-      className={`w-full lg:w-[325px] shrink-0 p-4 bg-[#FFFCFE] dark:bg-[#111622] rounded-[16px] border border-[#F6E7ED] dark:border-gray-800 flex flex-col gap-8 select-none transition-colors duration-200 ${className}`}
-    >
-      {/* 1. FILTER BY PRICE (Exact Figma Slider) */}
-      <div className="w-full flex flex-col gap-10">
-        <h3 className="text-base font-inter font-semibold text-[#A20E4C] dark:text-[#FF4D82] leading-6">
-          Filter By Price
-        </h3>
-
-        {/* Dual Range Slider with Tooltips */}
-        <div className="relative w-full px-2 py-4">
-          {/* Base Background Track (Figma: background: #F6E7ED, height: 8px) */}
-          <div className="relative w-full h-2 bg-[#F6E7ED] dark:bg-gray-800 rounded-full">
-            {/* Active Pink Fill Track (Figma: background: #D490AD) */}
-            <div
-              className="absolute h-2 bg-[#D490AD] dark:bg-[#FF4D82] rounded-full"
-              style={{
-                left: `${minPercent}%`,
-                width: `${maxPercent - minPercent}%`,
-              }}
-            />
-          </div>
-
-          {/* Native Hidden Dual Range Inputs */}
-          <input
-            type="range"
-            min={minPrice}
-            max={maxPrice}
-            step={50}
-            value={currentMin}
-            onChange={(e) => {
-              const val = Math.min(Number(e.target.value), currentMax - 100);
-              onFilterChange({ priceRange: [val, currentMax] });
-            }}
-            className="absolute inset-x-2 top-3 w-[calc(100%-16px)] h-4 opacity-0 cursor-pointer pointer-events-auto z-30"
-          />
-          <input
-            type="range"
-            min={minPrice}
-            max={maxPrice}
-            step={50}
-            value={currentMax}
-            onChange={(e) => {
-              const val = Math.max(Number(e.target.value), currentMin + 100);
-              onFilterChange({ priceRange: [currentMin, val] });
-            }}
-            className="absolute inset-x-2 top-3 w-[calc(100%-16px)] h-4 opacity-0 cursor-pointer pointer-events-auto z-30"
-          />
-
-          {/* Left Thumb Handle & Floating Tooltip */}
-          <div
-            className="absolute top-2 w-6 h-6 -ml-3 pointer-events-none z-20 flex items-center justify-center"
-            style={{ left: `calc(${minPercent}% + 8px)` }}
-          >
-            {/* Circular Handle */}
-            <div className="w-6 h-6 rounded-full bg-white dark:bg-gray-900 border-2 border-[#B53E70] dark:border-[#FF4D82] shadow-xs" />
-            {/* Floating Tooltip Box */}
-            <div className="absolute -top-10 px-3 py-1 bg-white dark:bg-gray-800 rounded-lg border border-black/10 dark:border-gray-700 shadow-md">
-              <span className="text-[12px] font-manrope font-semibold text-[#414651] dark:text-gray-200 whitespace-nowrap">
-                {currentMin.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Right Thumb Handle & Floating Tooltip */}
-          <div
-            className="absolute top-2 w-6 h-6 -ml-3 pointer-events-none z-20 flex items-center justify-center"
-            style={{ left: `calc(${maxPercent}% + 8px)` }}
-          >
-            {/* Circular Handle */}
-            <div className="w-6 h-6 rounded-full bg-white dark:bg-gray-900 border-2 border-[#B53E70] dark:border-[#FF4D82] shadow-xs" />
-            {/* Floating Tooltip Box */}
-            <div className="absolute -top-10 px-3 py-1 bg-white dark:bg-gray-800 rounded-lg border border-black/10 dark:border-gray-700 shadow-md">
-              <span className="text-[12px] font-manrope font-semibold text-[#414651] dark:text-gray-200 whitespace-nowrap">
-                {currentMax.toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
+  return <aside className={`w-full shrink-0 p-4 bg-white dark:bg-[#111622] rounded-[16px] border border-[#F6E7ED] dark:border-gray-800 flex flex-col gap-5 ${className}`}>
+    <section>
+      <h3 className="mb-4 text-base font-semibold text-[#A20E4C] dark:text-[#FF4D82]">Filter by price</h3>
+      <div className="flex justify-between text-xs text-gray-600"><span>৳{filters.priceRange[0].toLocaleString()}</span><span>৳{filters.priceRange[1].toLocaleString()}</span></div>
+      <div className="relative my-3 h-5 touch-none" role="group" aria-label="Price range">
+        <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-pink-100" />
+        <div className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-pink-500" style={{ left: `${Math.max(0, Math.min(100, lowPercent))}%`, width: `${Math.max(0, Math.min(100, highPercent) - Math.max(0, lowPercent))}%` }} />
+        <span aria-hidden="true" className="pointer-events-none absolute top-1/2 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-pink-500 bg-white shadow-sm" style={{ left: `${Math.max(0, Math.min(100, lowPercent))}%` }} />
+        <span aria-hidden="true" className="pointer-events-none absolute top-1/2 z-20 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-pink-500 bg-white shadow-sm" style={{ left: `${Math.max(0, Math.min(100, highPercent))}%` }} />
+        <input aria-label="Minimum price" type="range" min={minPrice} max={safeMax} step={Math.max(1, Math.round((safeMax - minPrice) / 100))} value={filters.priceRange[0]} onChange={(event) => onFilterChange({ priceRange: [Math.min(Number(event.target.value), filters.priceRange[1]), filters.priceRange[1]] })} className="absolute inset-0 z-30 h-full w-full cursor-pointer opacity-0" />
+        <input aria-label="Maximum price" type="range" min={minPrice} max={safeMax} step={Math.max(1, Math.round((safeMax - minPrice) / 100))} value={filters.priceRange[1]} onChange={(event) => onFilterChange({ priceRange: [filters.priceRange[0], Math.max(Number(event.target.value), filters.priceRange[0])] })} className="absolute inset-0 z-30 h-full w-full cursor-pointer opacity-0" />
       </div>
-
-      {/* Divider */}
-      <div className="w-full h-px bg-[#F6E7ED] dark:bg-gray-800" />
-
-      {/* 2. ALL CATEGORIES ACCORDION */}
-      <div className="w-full flex flex-col gap-4">
-        <h3 className="text-base font-inter font-semibold text-[#A20E4C] dark:text-[#FF4D82] leading-6">
-          All Categories
-        </h3>
-
-        <div className="flex flex-col gap-2">
-          {/* Category Item 1: Jewellery & Accessories */}
-          <div className="rounded-lg overflow-hidden border border-[#F6E7ED]/60 dark:border-gray-800 bg-white dark:bg-[#161C2C]">
-            <button
-              type="button"
-              onClick={() => toggleCategory("jewellery")}
-              className="w-full h-14 px-4 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors"
-            >
-              <span className="text-base font-inter font-normal text-[#1B1E23] dark:text-gray-100">
-                Jewellery &amp; Accessories
-              </span>
-              <div className="text-gray-700 dark:text-gray-300">
-                {openCategory === "jewellery" ? (
-                  <ChevronDown size={18} />
-                ) : (
-                  <ChevronRight size={18} />
-                )}
-              </div>
+    </section>
+    <div className="h-px bg-pink-100" />
+    <section>
+      <h3 className="mb-3 text-base font-semibold text-[#A20E4C] dark:text-[#FF4D82]">Categories</h3>
+      {categories.length ? <div className="space-y-1">{categories.map((category) => {
+        const expanded = openCategory === category.slug;
+        return <div key={category.id} className="overflow-hidden rounded-lg">
+          <div className="flex items-center">
+            <button type="button" onClick={() => onFilterChange({ category: category.slug, subcategory: "" })} aria-pressed={filters.category === category.slug} className={`flex flex-1 items-center gap-2 rounded-lg px-2 py-2.5 text-left text-sm hover:bg-pink-50 dark:hover:bg-gray-800 ${filters.category === category.slug ? "font-semibold text-pink-600" : "text-slate-800 dark:text-slate-100"}`}>
+              <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${filters.category === category.slug ? "border-[#E72C7E] bg-[#E72C7E] text-white" : "border-slate-300 bg-white dark:border-slate-600 dark:bg-gray-900"}`}>{filters.category === category.slug && <Check size={12} strokeWidth={3} />}</span>
+              <span className="min-w-0 flex-1 truncate">{category.name}</span><span className="text-xs text-slate-400">({category._count.products})</span>
             </button>
-
-            {openCategory === "jewellery" && (
-              <div className="flex flex-col border-t border-[#F6E7ED] dark:border-gray-800">
-                {[
-                  "Earrings",
-                  "Nose Rings & Pins",
-                  "Bangles & Bracelets",
-                  "Rings",
-                  "Necklace & Chains",
-                ].map((sub, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() =>
-                      onFilterChange({
-                        category: "jewellery",
-                        subcategory: sub.toLowerCase(),
-                      })
-                    }
-                    className="w-full h-12 px-4 flex items-center justify-between hover:bg-pink-50/30 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
-                  >
-                    <span className="text-sm font-inter text-[#33373F] dark:text-gray-300 group-hover:text-[#A20E4C] dark:group-hover:text-[#FF4D82]">
-                      {sub}
-                    </span>
-                    <span className="w-6 h-6 rounded-[20px] bg-[#E9EBEE] dark:bg-gray-800 border border-[#D4D7DE] dark:border-gray-700 text-[10px] font-inter font-medium text-[#3F444E] dark:text-gray-300 flex items-center justify-center">
-                      50
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {category.subCategories.length > 0 && <button aria-label={`${expanded ? "Collapse" : "Expand"} ${category.name}`} type="button" onClick={() => setOpenCategory(expanded ? "" : category.slug)} className="rounded-lg p-2 text-slate-500 hover:bg-pink-50">{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>}
           </div>
-
-          {/* Category Item 2: Beauty & Personal Care */}
-          <div className="rounded-lg overflow-hidden border border-[#F6E7ED]/60 dark:border-gray-800 bg-white dark:bg-[#161C2C]">
-            <button
-              type="button"
-              onClick={() => toggleCategory("beauty")}
-              className="w-full h-14 px-4 flex items-center justify-between cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors"
-            >
-              <span className="text-base font-inter font-normal text-[#1B1E23] dark:text-gray-100">
-                Beauty &amp; Personal Care
-              </span>
-              <div className="text-gray-700 dark:text-gray-300">
-                {openCategory === "beauty" ? (
-                  <ChevronDown size={18} />
-                ) : (
-                  <ChevronRight size={18} />
-                )}
-              </div>
-            </button>
-
-            {openCategory === "beauty" && (
-              <div className="flex flex-col border-t border-[#F6E7ED] dark:border-gray-800">
-                {[
-                  "Skin Care",
-                  "Personal Care",
-                  "Makeup",
-                  "Lip Care",
-                  "Hair Care",
-                  "Fragrance",
-                ].map((sub, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() =>
-                      onFilterChange({
-                        category: "beauty",
-                        subcategory: sub.toLowerCase(),
-                      })
-                    }
-                    className="w-full h-12 px-4 flex items-center justify-between hover:bg-pink-50/30 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
-                  >
-                    <span className="text-sm font-inter text-[#33373F] dark:text-gray-300 group-hover:text-[#A20E4C] dark:group-hover:text-[#FF4D82]">
-                      {sub}
-                    </span>
-                    <span className="w-6 h-6 rounded-[20px] bg-[#E9EBEE] dark:bg-gray-800 border border-[#D4D7DE] dark:border-gray-700 text-[10px] font-inter font-medium text-[#3F444E] dark:text-gray-300 flex items-center justify-center">
-                      50
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="w-full h-px bg-[#F6E7ED] dark:bg-gray-800" />
-
-      {/* 3. BY BRAND (Search + Scrollable Radio List) */}
-      <div className="w-full flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h3 className="text-base font-inter font-semibold text-[#A20E4C] dark:text-[#FF4D82] leading-6">
-            By Brand
-          </h3>
-          {/* Brand Search Bar */}
-          <div className="w-full px-3.5 py-2.5 bg-[#FDFDFD] dark:bg-gray-800/90 rounded-lg border border-[#F6E7ED] dark:border-gray-700 flex items-center gap-2">
-            <Search size={18} className="text-[#80899C] dark:text-gray-400" />
-            <input
-              type="text"
-              value={brandSearch}
-              onChange={(e) => setBrandSearch(e.target.value)}
-              placeholder="Search your brand"
-              className="w-full bg-transparent text-sm font-inter text-[#1B1E23] dark:text-gray-100 placeholder-[#80899C] dark:placeholder-gray-400 focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* Scrollable Brands */}
-        <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-1">
-          {filteredBrands.map((brand) => {
-            const isSelected = filters.selectedBrands.includes(brand.name);
-            return (
-              <button
-                key={brand.id}
-                type="button"
-                onClick={() => handleBrandSelect(brand.name)}
-                className="w-full py-2 px-3 flex items-center justify-between hover:bg-pink-50/20 dark:hover:bg-gray-800/50 rounded-lg transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  {/* Custom Radio Button */}
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-all bg-[#FDFDFD] dark:bg-gray-900 ${
-                      isSelected
-                        ? "border-4 border-[#A20E4C] dark:border-[#FF4D82]"
-                        : "border-2 border-[#F6E7ED] dark:border-gray-700"
-                    }`}
-                  />
-                  {/* Brand Logo Thumbnail */}
-                  <img
-                    src={brand.logo}
-                    alt={brand.name}
-                    className="w-10 h-6 object-contain rounded-xs border border-gray-100 dark:border-gray-700 bg-white"
-                  />
-                  <span className="text-base font-inter font-normal text-[#1B1E23] dark:text-gray-200">
-                    {brand.name}
-                  </span>
-                </div>
-                {/* Count Badge */}
-                <span className="w-6 h-6 rounded-[20px] bg-[#E9EBEE] dark:bg-gray-800 border border-[#D4D7DE] dark:border-gray-700 text-[10px] font-inter font-medium text-[#3F444E] dark:text-gray-300 flex items-center justify-center">
-                  {brand.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="w-full h-px bg-[#F6E7ED] dark:bg-gray-800" />
-
-      {/* 4. FILTER BY STATUS */}
-      <div className="w-full flex flex-col gap-4">
-        <h3 className="text-base font-inter font-semibold text-[#A20E4C] dark:text-[#FF4D82] leading-6">
-          Filter By Status
-        </h3>
-        <div className="flex flex-col gap-1">
-          {/* On Sale */}
-          <button
-            type="button"
-            onClick={() => onFilterChange({ onSaleOnly: !filters.onSaleOnly })}
-            className="w-full py-2 px-3 flex items-center gap-3 hover:bg-pink-50/20 dark:hover:bg-gray-800/50 rounded-lg transition-colors cursor-pointer"
-          >
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-all bg-[#FDFDFD] dark:bg-gray-900 ${
-                filters.onSaleOnly
-                  ? "border-4 border-[#A20E4C] dark:border-[#FF4D82]"
-                  : "border-2 border-[#F6E7ED] dark:border-gray-700"
-              }`}
-            />
-            <span
-              className={`text-base font-inter ${
-                filters.onSaleOnly
-                  ? "font-semibold text-[#A20E4C] dark:text-[#FF4D82]"
-                  : "font-normal text-[#1B1E23] dark:text-gray-200"
-              }`}
-            >
-              On sale
-            </span>
-          </button>
-
-          {/* In Stock */}
-          <button
-            type="button"
-            onClick={() => onFilterChange({ inStockOnly: !filters.inStockOnly })}
-            className="w-full py-2 px-3 flex items-center gap-3 hover:bg-pink-50/20 dark:hover:bg-gray-800/50 rounded-lg transition-colors cursor-pointer"
-          >
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-all bg-[#FDFDFD] dark:bg-gray-900 ${
-                filters.inStockOnly
-                  ? "border-4 border-[#A20E4C] dark:border-[#FF4D82]"
-                  : "border-2 border-[#F6E7ED] dark:border-gray-700"
-              }`}
-            />
-            <span
-              className={`text-base font-inter ${
-                filters.inStockOnly
-                  ? "font-semibold text-[#A20E4C] dark:text-[#FF4D82]"
-                  : "font-normal text-[#1B1E23] dark:text-gray-200"
-              }`}
-            >
-              In-stock
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="w-full h-px bg-[#F6E7ED] dark:bg-gray-800" />
-
-      {/* 5. SORT BY */}
-      <div className="w-full flex flex-col gap-4">
-        <h3 className="text-base font-inter font-semibold text-[#A20E4C] dark:text-[#FF4D82] leading-6">
-          Sort By
-        </h3>
-        <div className="flex flex-col gap-1">
-          {[
-            { id: "popularity", label: "Popularity" },
-            { id: "rating", label: "Average rating" },
-            { id: "newness", label: "Newness" },
-            { id: "price_asc", label: "Price: low to high" },
-            { id: "price_desc", label: "Price: high to low" },
-          ].map((item) => {
-            const isSelected = filters.sortBy === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onFilterChange({ sortBy: item.id })}
-                className="w-full py-2 px-3 flex items-center gap-3 hover:bg-pink-50/20 dark:hover:bg-gray-800/50 rounded-lg transition-colors cursor-pointer"
-              >
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center transition-all bg-[#FDFDFD] dark:bg-gray-900 ${
-                    isSelected
-                      ? "border-4 border-[#500624] dark:border-[#FFE2FF] bg-[#FFE2FF]"
-                      : "border-2 border-[#F6E7ED] dark:border-gray-700"
-                  }`}
-                />
-                <span
-                  className={`text-base font-inter ${
-                    isSelected
-                      ? "font-bold text-[#500624] dark:text-[#FFE2FF]"
-                      : "font-normal text-[#1B1E23] dark:text-gray-200"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </aside>
-  );
+          {expanded && category.subCategories.length > 0 && <div className="ml-4 border-l border-pink-100 py-1 pl-2">{category.subCategories.map((sub) => <button key={sub.id} type="button" onClick={() => onFilterChange({ category: category.slug, subcategory: sub.slug })} className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-pink-50 ${filters.subcategory === sub.slug ? "font-semibold text-pink-600" : "text-slate-600 dark:text-slate-300"}`}>
+            <span>{sub.name}</span><span className="text-xs text-slate-400">{sub._count.products}</span>
+          </button>)}</div>}
+        </div>;
+      })}</div> : <p className="text-sm text-slate-500">No categories in published products.</p>}
+    </section>
+    <div className="h-px bg-pink-100" />
+    <section>
+      <h3 className="mb-3 text-base font-semibold text-[#A20E4C] dark:text-[#FF4D82]">By brand</h3>
+      <label className="mb-3 flex items-center gap-2 rounded-lg border border-pink-100 px-3 py-2"><Search size={16} className="text-slate-400" /><input value={brandSearch} onChange={(event) => setBrandSearch(event.target.value)} placeholder="Search brands" className="w-full bg-transparent text-sm outline-none" /></label>
+      <div className="max-h-64 space-y-1 overflow-y-auto">{filteredBrands.map((brand) => <button key={brand.id} type="button" onClick={() => onFilterChange({ selectedBrands: selectedBrand === brand.slug ? [] : [brand.slug] })} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-pink-50">
+        <span className="flex items-center gap-2"><span className={`grid h-5 w-5 place-items-center rounded-full border ${selectedBrand === brand.slug ? "border-4 border-pink-600" : "border-slate-300"}`} />{brand.logo && <img src={imageUrl(brand.logo)} alt="" className="h-6 w-10 rounded border border-slate-100 bg-white object-contain" />}<span className="text-sm">{brand.name}</span></span><span className="text-xs text-slate-400">{brand._count.products}</span>
+      </button>)}</div>
+    </section>
+    <div className="h-px bg-pink-100" />
+    <section className="space-y-2">
+      <h3 className="mb-3 text-base font-semibold text-[#A20E4C] dark:text-[#FF4D82]">Availability & offers</h3>
+      <label className="flex items-center gap-3 px-2 py-1 text-sm"><input type="checkbox" checked={filters.inStockOnly} onChange={(event) => onFilterChange({ inStockOnly: event.target.checked })} />In stock</label>
+      <label className="flex items-center gap-3 px-2 py-1 text-sm"><input type="checkbox" checked={filters.onSaleOnly} onChange={(event) => onFilterChange({ onSaleOnly: event.target.checked })} />On sale</label>
+      <label className="flex items-center gap-3 px-2 py-1 text-sm"><span>Minimum rating</span><select value={filters.rating || ""} onChange={(event) => onFilterChange({ rating: event.target.value ? Number(event.target.value) : null })} className="ml-auto rounded border border-pink-100 bg-white px-2 py-1"><option value="">Any</option>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating}+</option>)}</select></label>
+    </section>
+    <div className="h-px bg-pink-100" />
+    <section>
+      <h3 className="mb-3 text-base font-semibold text-[#A20E4C] dark:text-[#FF4D82]">Sort by</h3>
+      <select value={filters.sortBy} onChange={(event) => onFilterChange({ sortBy: event.target.value })} className="w-full rounded-lg border border-pink-100 bg-white px-3 py-2 text-sm">
+        <option value="popularity">Newest products</option><option value="rating">Highest rated</option><option value="newest">New arrivals</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option>
+      </select>
+      <button type="button" onClick={onResetFilters} className="mt-4 w-full rounded-lg border border-pink-200 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-50">Clear filters</button>
+    </section>
+  </aside>;
 };
 
 export default FigmaShopSidebar;

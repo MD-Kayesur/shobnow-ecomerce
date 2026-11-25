@@ -49,7 +49,7 @@ interface InventorySummary {
   outOfStock: number;
 }
 export interface ProductMedia { id: string; imageUrl: string; imageRole?: string | null; altText?: string | null; isPrimary: boolean; sortOrder: number; }
-export interface ProductVariant { id: string; variantName: string; sku?: string | null; color?: string | null; size?: string | null; sellingPrice: number | string; stockQuantity: number; }
+export interface ProductVariant { id: string; variantName: string; sku?: string | null; color?: string | null; size?: string | null; weight?: number | string | null; volume?: number | string | null; unit?: string | null; sellingPrice: number | string; stockQuantity: number; isDefault?: boolean; }
 export interface ProductAttribute { id: string; name: string; value: string; sortOrder: number; }
 export interface ProductMetadata { id: string; metaTitle?: string | null; metaDescription?: string | null; metaKeywords: string[]; }
 export interface ProductSetupProgress { productId: string; completedSteps: number; totalSteps: number; percentage: number; steps: Array<{ key: string; complete: boolean }>; }
@@ -113,12 +113,36 @@ export const adminProductsApi = baseApi.injectEndpoints({
       query: ({ id, body }) => ({ url: `/admin/products/${id}/media`, method: "POST", body }),
       invalidatesTags: (_result, _error, { id }) => [{ type: "Products", id }],
     }),
+    updateAdminProductMedia: build.mutation<unknown, { id: string; body: FormData }>({
+      query: ({ id, body }) => ({ url: `/admin/product-media/${id}`, method: "PATCH", body }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: "Products", id }, { type: "Products", id: "LIST" }],
+    }),
+    deleteAdminProductMedia: build.mutation<unknown, { id: string; productId: string }>({
+      query: ({ id }) => ({ url: `/admin/product-media/${id}`, method: "DELETE" }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
+    }),
     createAdminProductVariant: build.mutation<unknown, { productId: string; body: Record<string, unknown> }>({
       query: ({ productId, body }) => ({ url: `/admin/products/${productId}/variants`, method: "POST", body }),
       invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
     }),
+    updateAdminProductVariant: build.mutation<unknown, { id: string; productId: string; body: Record<string, unknown> }>({
+      query: ({ id, body }) => ({ url: `/admin/product-variants/${id}`, method: "PATCH", body }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
+    }),
+    deleteAdminProductVariant: build.mutation<unknown, { id: string; productId: string }>({
+      query: ({ id }) => ({ url: `/admin/product-variants/${id}`, method: "DELETE" }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
+    }),
     createAdminProductAttribute: build.mutation<unknown, { productId: string; body: Record<string, unknown> }>({
       query: ({ productId, body }) => ({ url: `/admin/products/${productId}/attributes`, method: "POST", body }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
+    }),
+    updateAdminProductAttribute: build.mutation<unknown, { id: string; productId: string; body: Record<string, unknown> }>({
+      query: ({ id, body }) => ({ url: `/admin/product-attributes/${id}`, method: "PATCH", body }),
+      invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
+    }),
+    deleteAdminProductAttribute: build.mutation<unknown, { id: string; productId: string }>({
+      query: ({ id }) => ({ url: `/admin/product-attributes/${id}`, method: "DELETE" }),
       invalidatesTags: (_result, _error, { productId }) => [{ type: "Products", id: productId }, { type: "Products", id: "LIST" }],
     }),
     createAdminProductMetadata: build.mutation<unknown, { productId: string; body: Record<string, unknown> }>({
@@ -164,8 +188,14 @@ export const {
   useCreateAdminProductMutation,
   useUpdateAdminProductMutation,
   useUploadAdminProductMediaMutation,
+  useUpdateAdminProductMediaMutation,
+  useDeleteAdminProductMediaMutation,
   useCreateAdminProductVariantMutation,
+  useUpdateAdminProductVariantMutation,
+  useDeleteAdminProductVariantMutation,
   useCreateAdminProductAttributeMutation,
+  useUpdateAdminProductAttributeMutation,
+  useDeleteAdminProductAttributeMutation,
   useCreateAdminProductMetadataMutation,
   useUpdateAdminProductMetadataMutation,
   useSaveAdminCosmeticDetailsMutation,
