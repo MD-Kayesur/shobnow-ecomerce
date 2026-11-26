@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Hero from "@/components/Home/Hero/Hero";
 import BrandMarquee from "@/components/Home/LandingPage/BrandMarquee";
 import BrandCategories from "@/components/Home/LandingPage/BrandCategories";
@@ -12,21 +12,31 @@ import NewsletterVIP from "@/components/Home/LandingPage/NewsletterVIP";
 import ProductQuickViewModal from "@/components/Shop/ProductQuickViewModal";
 import { Product } from "@/data/shopData";
 import { toast } from "sonner";
+import { useAddWishlistItemMutation, useGetWishlistQuery, useRemoveWishlistItemMutation } from "@/redux/features/storefront/storefrontApi";
+import { useAppSelector } from "@/redux/hooks/redux-hook";
 
 const Home = () => {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const user = useAppSelector((state) => state.auth.user);
+  const { data: wishlistResponse } = useGetWishlistQuery(undefined, { skip: !user });
+  const [addWishlist] = useAddWishlistItemMutation();
+  const [removeWishlist] = useRemoveWishlistItemMutation();
 
-  const handleToggleWishlist = (product: Product) => {
-    setWishlist((prev) => {
-      const updated = !prev[product.id];
-      if (updated) {
-        toast.success(`Added ${product.name} to your wishlist!`);
-      } else {
-        toast.info(`Removed ${product.name} from wishlist.`);
-      }
-      return { ...prev, [product.id]: updated };
-    });
+  useEffect(() => {
+    if (user) setWishlist(Object.fromEntries((wishlistResponse?.data || []).map((entry) => [entry.product.id, true])));
+    else setWishlist({});
+  }, [user, wishlistResponse]);
+
+  const handleToggleWishlist = async (product: Product) => {
+    if (!user) { toast.info("Sign in to save products to your wishlist."); return; }
+    try {
+      if (wishlist[product.id]) { await removeWishlist(product.id).unwrap(); toast.info(`Removed ${product.name} from wishlist.`); }
+      else { await addWishlist({ productId: product.id }).unwrap(); toast.success(`Added ${product.name} to wishlist!`); }
+    } catch (error) {
+      const message = (error as { data?: { message?: string } })?.data?.message;
+      toast.error(message || "Could not update your wishlist. Please try again.");
+    }
   };
 
   return (

@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Sparkles,
   LogOut,
+  Mail,
 } from "lucide-react";
 import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import { logOut } from "@/redux/features/auth/authSlice";
@@ -76,6 +77,11 @@ const defaultSidebarItems: SidebarItem[] = [
     icon: ShieldAlert,
     label: "Error Logs",
     href: "/admin-dashboard/error-logs",
+  },
+  {
+    icon: Mail,
+    label: "Newsletter Subscribers",
+    href: "/admin-dashboard/newsletter",
   },
   {
     icon: Settings,

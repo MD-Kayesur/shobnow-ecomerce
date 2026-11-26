@@ -1,20 +1,30 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
+import { useSubscribeNewsletterMutation } from "@/redux/features/storefront/storefrontApi";
 
 export const NewsletterVIP: React.FC = () => {
   const [email, setEmail] = useState("");
+  const [subscribe, { isLoading }] = useSubscribeNewsletterMutation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes("@")) {
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       toast.error("Please enter a valid email address!");
       return;
     }
 
-    toast.success("Thank you for subscribing!", {
-      description: "You will receive our latest updates and exclusive offers.",
-    });
-    setEmail("");
+    try {
+      const response = await subscribe({ email: normalizedEmail, source: "storefront-footer" }).unwrap();
+      toast.success(response.message || "Thank you for subscribing!", {
+        description: "You will receive our latest updates and exclusive offers.",
+      });
+      setEmail("");
+    } catch (error) {
+      const response = error as { data?: { message?: string | string[] } };
+      const message = response.data?.message;
+      toast.error(Array.isArray(message) ? message.join(" ") : message || "Could not subscribe right now. Please try again.");
+    }
   };
 
   return (
@@ -50,9 +60,10 @@ export const NewsletterVIP: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-5 py-2.5 bg-[#FFE2FF] hover:bg-[#ffd1ff] text-[#500624] font-inter font-bold text-lg leading-[23.4px] rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
+                disabled={isLoading}
+                className="w-full sm:w-auto px-5 py-2.5 bg-[#FFE2FF] hover:bg-[#ffd1ff] disabled:opacity-60 disabled:cursor-not-allowed text-[#500624] font-inter font-bold text-lg leading-[23.4px] rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs"
               >
-                Subscribe
+                {isLoading ? "Submitting…" : "Subscribe"}
               </button>
             </form>
           </div>

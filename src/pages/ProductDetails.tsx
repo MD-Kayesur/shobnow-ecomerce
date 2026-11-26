@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, ChevronLeft, ChevronRight,
   CircleHelp, Clock3, Gift, Heart, Leaf, Minus, Plus, RotateCcw, ShieldCheck,
@@ -31,6 +31,7 @@ const errorMessage = (error: unknown) => {
 const ProductDetails = () => {
   const { slug = "" } = useParams();
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   const { data: response, isLoading, isError, refetch } = useGetStoreProductQuery(slug, { skip: !slug });
   const product = response?.data;
@@ -77,7 +78,8 @@ const ProductDetails = () => {
   const compatibility = product?.skinCompatibility || [];
   const concerns = product?.concernCompatibility || [];
   const benefits = Array.isArray(details.benefits) ? details.benefits.map(recordText).filter(Boolean) : [];
-  const usage = recordText(details.howToUse || details.usageInstructions || details.directions);
+  const rawUsage = recordText(details.howToUse || details.usageInstructions || details.directions || product?.jewelryDetails?.careInstructions);
+  const usage = /^Demo listing:\s*no real use or safety instructions are available\.?$/i.test(rawUsage.trim()) ? "" : rawUsage;
 
   if (isLoading) return <main className="min-h-[70vh] bg-[#fff9fc] px-5 py-10"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-5 w-1/3 rounded bg-pink-100"/><div className="mt-8 grid gap-8 lg:grid-cols-2"><div className="aspect-square rounded-3xl bg-pink-100"/><div className="space-y-5"><div className="h-10 rounded bg-pink-100"/><div className="h-24 rounded bg-pink-100"/><div className="h-14 rounded bg-pink-100"/></div></div></div></main>;
   if (isError || !product) return <main className="grid min-h-[65vh] place-items-center bg-[#fff9fc] px-5"><div className="max-w-lg rounded-3xl border border-rose-200 bg-white p-9 text-center shadow-sm"><CircleHelp className="mx-auto text-[#e72c7e]" size={38}/><h1 className="mt-4 text-2xl font-bold text-[#172443]">We couldn’t load this product</h1><p className="mt-2 text-slate-600">Check that the product is published and the storefront API is available.</p><button onClick={() => void refetch()} className="mt-5 rounded-xl bg-[#e72c7e] px-6 py-3 font-semibold text-white">Retry</button><Link to="/shop" className="ml-4 text-sm font-semibold text-[#a20e4c]">Back to shop</Link></div></main>;
@@ -101,6 +103,7 @@ const ProductDetails = () => {
       ...(Number(item.price) > price ? { originalPrice: Number(item.price) } : {}),
       image: itemImage, brand: item.brand?.name || undefined, category: item.category?.slug,
       selectedSize: itemVariant?.variantName || undefined, quantity: count, openDrawer,
+      variantId: itemVariant?.id,
     }));
   };
   const addBundle = () => {
@@ -157,7 +160,7 @@ const ProductDetails = () => {
               <button type="button" onClick={() => setTab("Reviews")} className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 <span className="flex text-amber-400">{Array.from({ length: 5 }, (_, index) => <Star key={index} size={18} className={index < Math.round(reviewSummary.averageRating) ? "fill-current" : "text-slate-300"}/>)}</span>
                 <strong>{Number(reviewSummary.averageRating || 0).toFixed(1)}</strong><span className="text-slate-500">({reviewSummary.reviewCount.toLocaleString()} reviews)</span>
-              </a>
+              </button>
               <p className="mt-3 max-w-2xl leading-relaxed text-slate-700">{product.shortDescription || product.description || "Explore product details and specifications below."}</p>
             </div>
             <aside className="relative hidden min-h-[116px] self-start overflow-hidden rounded-2xl bg-gradient-to-br from-[#fff0f8] via-[#ffe9f4] to-[#ffd5e9] p-3 text-center sm:block xl:min-h-[132px] xl:p-3.5">
@@ -178,7 +181,7 @@ const ProductDetails = () => {
           <div className="mt-4 flex flex-wrap gap-3">
             <div className="flex h-11 items-center rounded-full border border-pink-100 bg-white shadow-sm"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1} aria-label="Decrease quantity" className="grid h-10 w-10 place-items-center rounded-full text-slate-700 transition-colors hover:bg-[#fff0f7] hover:text-[#e90068] disabled:opacity-40"><Minus size={15}/></button><span className="min-w-7 text-center text-sm font-bold">{quantity}</span><button onClick={() => setQuantity(Math.min(stockCount || 1, quantity + 1))} disabled={!inStock || quantity >= stockCount} aria-label="Increase quantity" className="grid h-10 w-10 place-items-center rounded-full text-slate-700 transition-colors hover:bg-[#fff0f7] hover:text-[#e90068] disabled:opacity-40"><Plus size={16}/></button></div>
             <button onClick={() => { addProductToCart(product, quantity, true); toast.success("Added to your cart."); }} disabled={!inStock} className="inline-flex min-w-[175px] flex-1 items-center justify-center gap-2 rounded-full bg-[#e90068] px-5 py-3 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#c9005b] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0 disabled:hover:shadow-none sm:flex-none"><ShoppingCart size={19}/>Add to Cart</button>
-            <button onClick={() => { if (!inStock) return; addProductToCart(product, quantity, true); toast.success("Product added. Continue to checkout from your cart."); }} disabled={!inStock} className="inline-flex min-w-[145px] flex-1 items-center justify-center gap-2 rounded-full border border-[#e90068] bg-white px-5 py-3 text-sm font-bold text-[#c00759] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#fff0f7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 sm:flex-none"><ShoppingBag size={18}/>Buy Now</button>
+            <button onClick={() => { if (!inStock) return; if (!user) { toast.info("Sign in to place your order."); navigate("/login", { state: { from: `/product/${product.slug}` } }); return; } addProductToCart(product, quantity, false); navigate("/checkout"); }} disabled={!inStock} className="inline-flex min-w-[145px] flex-1 items-center justify-center gap-2 rounded-full border border-[#e90068] bg-white px-5 py-3 text-sm font-bold text-[#c00759] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#fff0f7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 sm:flex-none"><ShoppingBag size={18}/>Buy Now</button>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-pink-100 bg-white p-4 text-xs sm:grid-cols-4"><div className="flex items-center gap-2"><ShieldCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>Secure checkout</span></div><div className="flex items-center gap-2"><Truck className="shrink-0 text-[#e72c7e]" size={20}/><span>Delivery at checkout</span></div><div className="flex items-center gap-2"><RotateCcw className="shrink-0 text-[#e72c7e]" size={20}/><span>See return policy</span></div><div className="flex items-center gap-2"><BadgeCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>{product.authenticityVerified ? "Authenticity verified" : "Product details provided"}</span></div></div>
         </div>
@@ -213,7 +216,7 @@ const ProductDetails = () => {
       {related.length > 0 && <section className="mt-10"><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-extrabold">You may also like</h2><Link to={`/shop${product.category?.slug ? `?category=${encodeURIComponent(product.category.slug)}` : ""}`} className="text-sm font-bold text-[#e72c7e]">View all <ArrowRight className="ml-1 inline" size={16}/></Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{related.slice(0,4).map((item) => { const itemMedia = item.media?.find((m) => m.isPrimary) || item.media?.[0]; const itemPrice = Number(item.variants.find((v) => v.isDefault)?.sellingPrice ?? item.salePrice ?? item.price); return <Link to={`/product/${item.slug}`} key={item.id} className="overflow-hidden rounded-2xl border border-pink-100 bg-white transition hover:-translate-y-0.5 hover:shadow-md"><div className="aspect-square bg-[#fff0f7]">{itemMedia && <img src={imageUrl(itemMedia.imageUrl)} alt={itemMedia.altText || item.name} className="h-full w-full object-cover" loading="lazy"/>}</div><div className="p-3"><h3 className="line-clamp-2 text-sm font-bold">{item.name}</h3><div className="mt-2 flex items-center justify-between gap-2"><strong className="text-[#a20e4c]">{money(itemPrice)}</strong><span className="flex items-center gap-1 text-xs text-slate-500"><Star size={13} className="fill-amber-400 text-amber-400"/>{Number(item.reviewSummary?.averageRating || 0).toFixed(1)}</span></div></div></Link>; })}</div></section>}
         </>}
         {tab === "How to Use" && (
-      <section id="how-to-use" className="mt-4 scroll-mt-24 rounded-3xl border border-pink-100 bg-white p-5 sm:p-7"><h2 className="text-2xl font-extrabold">How to use</h2><p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{usage || "Usage instructions have not been added for this product. Follow the packaging directions."}</p></section>
+      <section id="how-to-use" className="mt-4 scroll-mt-24 rounded-3xl border border-pink-100 bg-white p-5 sm:p-7"><h2 className="text-2xl font-extrabold">{product.jewelryDetails ? "Care instructions" : "How to use"}</h2><p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{usage || (product.jewelryDetails ? "Care instructions have not been added for this product." : "Usage instructions have not been added for this product. Follow the packaging directions.")}</p></section>
         )}
         {tab === "Ingredients" && (
       <section id="ingredients" className="scroll-mt-24 rounded-3xl border border-pink-100 bg-white p-5 sm:p-7"><h2 className="text-2xl font-extrabold">Ingredients &amp; compatibility</h2>{ingredients.length > 0 ? <div className="mt-4 space-y-3">{ingredients.map((raw, index) => { const item = raw as Record<string, unknown>; const description = [item.inciName, item.functions, item.description].map(recordText).filter(Boolean).join(" · "); return <div key={String(item.id || index)} className="rounded-2xl bg-[#fff7fb] p-4"><p className="font-bold">{recordText(item.name || item.ingredientName || item.inciName) || "Ingredient"}</p>{description && <p className="mt-1 text-sm text-slate-600">{description}</p>}</div>; })}</div> : <p className="mt-3 text-sm text-slate-600">Ingredient details have not been added for this product.</p>}

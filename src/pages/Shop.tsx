@@ -12,7 +12,8 @@ import ProductQuickViewModal from "@/components/Shop/ProductQuickViewModal";
 import NewsletterVIP from "@/components/Home/LandingPage/NewsletterVIP";
 import { ChevronLeft, ChevronRight, PackageSearch, SlidersHorizontal, Grid2X2, List, Star, Truck, Leaf, Gem, Gift } from "lucide-react";
 import { toast } from "sonner";
-import { useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, type StoreProduct } from "@/redux/features/storefront/storefrontApi";
+import { useAddWishlistItemMutation, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetWishlistQuery, useRemoveWishlistItemMutation, type StoreProduct } from "@/redux/features/storefront/storefrontApi";
+import { useAppSelector } from "@/redux/hooks/redux-hook";
 
 const mediaUrl = (value?: string | null) => {
   if (!value) return "";
@@ -87,6 +88,15 @@ export const Shop: React.FC = () => {
   // Quick View & Wishlist state
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const user = useAppSelector((state) => state.auth.user);
+  const { data: wishlistResponse } = useGetWishlistQuery(undefined, { skip: !user });
+  const [addWishlist] = useAddWishlistItemMutation();
+  const [removeWishlist] = useRemoveWishlistItemMutation();
+
+  useEffect(() => {
+    if (user) setWishlist(Object.fromEntries((wishlistResponse?.data || []).map((entry) => [entry.product.id, true])));
+    else setWishlist({});
+  }, [user, wishlistResponse]);
 
   const listQuery = {
     page: currentPage,
@@ -174,16 +184,15 @@ export const Shop: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleToggleWishlist = (product: Product) => {
-    setWishlist((prev) => {
-      const updated = !prev[product.id];
-      if (updated) {
-        toast.success(`Added ${product.name} to wishlist!`);
-      } else {
-        toast.info(`Removed ${product.name} from wishlist.`);
-      }
-      return { ...prev, [product.id]: updated };
-    });
+  const handleToggleWishlist = async (product: Product) => {
+    if (!user) { toast.info("Sign in to save products to your wishlist."); return; }
+    try {
+      if (wishlist[product.id]) { await removeWishlist(product.id).unwrap(); toast.info(`Removed ${product.name} from wishlist.`); }
+      else { await addWishlist({ productId: product.id }).unwrap(); toast.success(`Added ${product.name} to wishlist!`); }
+    } catch (error) {
+      const message = (error as { data?: { message?: string } })?.data?.message;
+      toast.error(message || "Could not update your wishlist. Please try again.");
+    }
   };
 
   useEffect(() => {

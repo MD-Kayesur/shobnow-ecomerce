@@ -11,6 +11,7 @@ export interface CartItem {
   brand?: string;
   category?: string;
   selectedSize?: string;
+  variantId?: string;
   quantity: number;
 }
 
@@ -66,6 +67,7 @@ export const cartSlice = createSlice({
         brand?: string;
         category?: string;
         selectedSize?: string;
+        variantId?: string;
         quantity?: number;
         openDrawer?: boolean;
       }>
@@ -80,6 +82,7 @@ export const cartSlice = createSlice({
         brand,
         category,
         selectedSize,
+        variantId,
         quantity = 1,
         openDrawer = true,
       } = action.payload;
@@ -102,6 +105,7 @@ export const cartSlice = createSlice({
           brand,
           category,
           selectedSize,
+          variantId,
           quantity,
         });
       }
@@ -130,6 +134,7 @@ export const cartSlice = createSlice({
       action: PayloadAction<{
         id: string | number;
         selectedSize?: string;
+        variantId?: string;
         quantity: number;
       }>
     ) => {
@@ -184,6 +189,12 @@ export const cartSlice = createSlice({
       state.discountAmount = Math.round((subtotal * percent) / 100);
     },
 
+    applyDiscountAmount: (state, action: PayloadAction<{ code: string; amount: number }>) => {
+      const subtotal = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      state.appliedDiscountCode = action.payload.code.trim().toUpperCase();
+      state.discountAmount = Math.min(subtotal, Math.max(0, Math.round(action.payload.amount * 100) / 100));
+    },
+
     removeDiscount: (state) => {
       state.appliedDiscountCode = undefined;
       state.discountAmount = 0;
@@ -200,6 +211,7 @@ export const {
   closeCartDrawer,
   toggleCartDrawer,
   applyDiscount,
+  applyDiscountAmount,
   removeDiscount,
 } = cartSlice.actions;
 

@@ -34,6 +34,7 @@ import {
   CategoriesBrandsPage,
   ActivityLogsPage,
   ErrorLogsPage,
+  NewsletterSubscribersPage,
 } from "@/AdminDashboard";
 import AddProductWizardPage from "@/AdminDashboard/pages/AddProductWizardPage";
 
@@ -236,6 +237,7 @@ const routes = createBrowserRouter([
       { path: "users", element: <CustomersPage /> },
       { path: "activity-logs", element: <ActivityLogsPage /> },
       { path: "error-logs", element: <ErrorLogsPage /> },
+      { path: "newsletter", element: <NewsletterSubscribersPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "audit-log", element: <SettingsPage /> },
     ],

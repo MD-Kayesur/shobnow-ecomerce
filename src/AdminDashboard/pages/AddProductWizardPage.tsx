@@ -76,6 +76,7 @@ export default function AddProductWizardPage() {
   const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
   const [metadataForm, setMetadataForm] = useState({ metaTitle: "", metaDescription: "", metaKeywords: "" });
   const [categoryDetailsJson, setCategoryDetailsJson] = useState("{}");
+  const [cosmeticUsageInstructions, setCosmeticUsageInstructions] = useState("");
   const [jewelryForm, setJewelryForm] = useState<JewelryForm>(emptyJewelryForm);
   const [variantForm, setVariantForm] = useState({ variantName: "", sku: "", color: "", size: "", weight: "", volume: "", unit: "", sellingPrice: "", stockQuantity: "0" });
 
@@ -170,6 +171,7 @@ export default function AddProductWizardPage() {
         gemstones: (jewelry.gemstones ?? []).map((row: any) => ({ ...row, cut: row.cut ?? "", carat: row.carat == null ? "" : String(row.carat), color: row.color ?? "", clarity: row.clarity ?? "", isLabGrown: row.isLabGrown ?? false })),
       });
     } else {
+      setCosmeticUsageInstructions(details.usageInstructions ?? "");
       setCategoryDetailsJson(JSON.stringify(normalized, null, 2));
     }
   }, [cosmeticResult, jewelryResult, productCategory]);
@@ -396,6 +398,7 @@ export default function AddProductWizardPage() {
         body = JSON.parse(categoryDetailsJson) as Record<string, unknown>;
         if (!body || Array.isArray(body) || typeof body !== "object") throw new Error();
       } catch { setError("Enter valid JSON object data for this product category."); return; }
+      body.usageInstructions = cosmeticUsageInstructions.trim() || null;
     }
     try {
       if (productCategory === "COSMETICS") { await saveCosmetic({ id: productId, body }).unwrap(); await reloadCosmetic(); }
@@ -504,7 +507,7 @@ export default function AddProductWizardPage() {
 
         <p className="text-xs text-gray-500">You can leave sections empty if they do not apply. Previously saved details are filled in automatically and can be edited.</p>
         <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => continueStep("categoryDetails")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Skip for now</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save jewelry details"}</button></div>
-      </form> : productCategory === "COSMETICS" ? <form onSubmit={saveCategoryDetails} className="space-y-3"><label className="block"><span className={labelClass}>Cosmetic product data</span><textarea className={`${inputClass} font-mono text-xs`} rows={15} value={categoryDetailsJson} onChange={(event) => setCategoryDetailsJson(event.target.value)} spellCheck={false}/></label><p className="text-xs text-gray-500">Cosmetic ingredient and skin compatibility details are validated by the backend. You can skip and return later.</p><div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => continueStep("categoryDetails")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Skip for now</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save category details"}</button></div></form> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Select Cosmetics or Jewelry in Product details to use this step. <button onClick={() => setStep("product")} className="ml-1 font-semibold underline">Edit product category</button></div>}
+      </form> : productCategory === "COSMETICS" ? <form onSubmit={saveCategoryDetails} className="space-y-3"><label className="block"><span className={labelClass}>How to use / Directions</span><textarea className={inputClass} rows={4} maxLength={5000} value={cosmeticUsageInstructions} onChange={(event) => setCosmeticUsageInstructions(event.target.value)} placeholder="Add product-specific directions, such as when and how to apply it."/><span className="mt-1 block text-xs text-gray-500">Shown in the storefront product’s “How to Use” tab.</span></label><label className="block"><span className={labelClass}>Other cosmetic product data (JSON)</span><textarea className={`${inputClass} font-mono text-xs`} rows={15} value={categoryDetailsJson} onChange={(event) => setCategoryDetailsJson(event.target.value)} spellCheck={false}/></label><p className="text-xs text-gray-500">Cosmetic ingredient and skin compatibility details are validated by the backend. You can skip and return later.</p><div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => continueStep("categoryDetails")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Skip for now</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save category details"}</button></div></form> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Select Cosmetics or Jewelry in Product details to use this step. <button onClick={() => setStep("product")} className="ml-1 font-semibold underline">Edit product category</button></div>}
       {(Boolean(productCategory === "COSMETICS" && cosmeticResult?.data?.cosmeticDetails) || Boolean(productCategory === "JEWELRY" && jewelryResult?.data?.jewelryDetails)) && <div className="flex justify-end"><button onClick={finishSetup} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white">Finish setup</button></div>}
     </section>}
 

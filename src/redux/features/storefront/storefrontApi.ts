@@ -23,13 +23,29 @@ export interface StoreProduct {
   reviewSummary: { averageRating: number; reviewCount: number; distribution?: Record<string, number> };
 }
 export interface StoreReview { id: string; rating: number; title?: string | null; comment: string; isVerifiedPurchase: boolean; createdAt: string; user: { name?: string | null } }
+export interface PromoBar { headline: string; offerText: string | null; deliveryText: string | null; isActive: boolean; startsAt: string | null; endsAt: string | null }
+export interface NewsletterSubscribeResponse { success: boolean; statusCode: number; message: string; data: null; timestamp?: string; path?: string }
 export interface ApiPage<T> { data: T[]; meta?: { page: number; limit: number; total: number; totalPages: number } }
 export interface StoreProductQuery { page?: number; limit?: number; search?: string; category?: string; subcategory?: string; brand?: string; minPrice?: number; maxPrice?: number; inStock?: boolean; onSale?: boolean; minRating?: number; sort?: string }
 type Envelope<T> = { data: T };
 interface WishlistPage { data: Array<{ id: string; product: { id: string } }>; meta?: { page: number; limit: number; total: number; totalPages: number } }
+export type OrderRequest = {
+  items: Array<{ productId: string; variantId?: string; quantity: number }>;
+  recipientName: string; recipientPhone: string; recipientEmail?: string;
+  addressLine: string; city: string; area?: string; postalCode?: string;
+  customerNote?: string; couponCode?: string; paymentMethod: "CALL_CONFIRMATION";
+};
+export interface CustomerOrder { id: string; orderNumber: string; status: string; total: string | number; recipientPhone: string }
+export interface CouponValidation { code: string; name: string; discountType: "PERCENT" | "FIXED"; discountValue: number | string; subtotal: number; discountAmount: number; totalAfterDiscount: number }
 
 export const storefrontApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
+    subscribeNewsletter: build.mutation<NewsletterSubscribeResponse, { email: string; source?: string }>({
+      query: (body) => ({ url: "/newsletter/subscribe", method: "POST", body }),
+    }),
+    getPromoBar: build.query<Envelope<PromoBar | null>, void>({
+      query: () => "/promo-bar", providesTags: ["PromoBar"],
+    }),
     getStoreFilterOptions: build.query<Envelope<{ categories: StoreCategory[]; brands: StoreBrand[]; priceRange: { min: number; max: number } }>, void>({
       query: () => "/products/filter-options", providesTags: ["Taxonomy"],
     }),
@@ -57,7 +73,13 @@ export const storefrontApi = baseApi.injectEndpoints({
       query: (productId) => ({ url: `/wishlist/items/${productId}`, method: "DELETE" }),
       invalidatesTags: ["Wishlist"],
     }),
+    createOrder: build.mutation<Envelope<CustomerOrder>, OrderRequest>({
+      query: (body) => ({ url: "/orders", method: "POST", body }),
+    }),
+    validateCoupon: build.mutation<Envelope<CouponValidation>, { code: string; subtotal: number }>({
+      query: (body) => ({ url: "/coupons/validate", method: "POST", body }),
+    }),
   }),
 });
 
-export const { useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation } = storefrontApi;
+export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useValidateCouponMutation } = storefrontApi;

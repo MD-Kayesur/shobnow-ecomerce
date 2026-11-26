@@ -9,6 +9,8 @@ import {
   Eye,
   Download,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useConfirmOrderCallMutation, useGetAdminOrdersQuery, useStartConfirmedOrderMutation } from "@/redux/features/admin/ordersApi";
 
 export interface AdminOrder {
   id: string;
@@ -110,6 +112,20 @@ const OrdersPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const { data: storeOrdersResponse, isLoading: loadingStoreOrders } = useGetAdminOrdersQuery({ limit: 50 });
+  const [confirmOrderCall, { isLoading: confirmingCall }] = useConfirmOrderCallMutation();
+  const [startConfirmedOrder, { isLoading: startingOrder }] = useStartConfirmedOrderMutation();
+  const phoneOrders = (storeOrdersResponse?.data || []).filter((order) => order.paymentMethod === "CALL_CONFIRMATION" && order.status === "PENDING_PAYMENT");
+  const callConfirmedOrders = (storeOrdersResponse?.data || []).filter((order) => order.paymentMethod === "CALL_CONFIRMATION" && order.status === "PAYMENT_CONFIRMED");
+
+  const handleConfirmCall = async (orderId: string) => {
+    try { await confirmOrderCall(orderId).unwrap(); toast.success("Call confirmed. This order is ready to process."); }
+    catch { toast.error("Could not confirm this order. Refresh and try again."); }
+  };
+  const handleStartProcessing = async (orderId: string) => {
+    try { await startConfirmedOrder(orderId).unwrap(); toast.success("Order processing has started."); }
+    catch { toast.error("Could not start processing this order. Refresh and try again."); }
+  };
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -152,6 +168,14 @@ const OrdersPage = () => {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div><h2 className="text-lg font-bold text-gray-900">Phone confirmation orders</h2><p className="mt-1 text-xs text-gray-600">Call the customer, confirm the address and order, then mark the call as confirmed.</p></div>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-800">{phoneOrders.length} pending</span>
+        </div>
+        {loadingStoreOrders ? <p className="text-sm text-gray-500">Loading orders…</p> : phoneOrders.length === 0 ? <p className="rounded-xl bg-white p-4 text-sm text-gray-500">No phone confirmation orders are waiting.</p> : <div className="space-y-3">{phoneOrders.map((order) => <article key={order.id} className="flex flex-col gap-3 rounded-xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-bold text-gray-900">#{order.orderNumber} · {order.recipientName}</p><p className="mt-1 text-sm text-gray-600"><a className="font-semibold text-primary underline" href={`tel:${order.recipientPhone}`}>{order.recipientPhone}</a> · {order.city} · {order.addressLine}</p><p className="mt-1 text-xs text-gray-500">{order.items.map((item) => `${item.quantity} × ${item.productName}`).join(", ")} · ৳{Number(order.total).toLocaleString()}</p></div><button type="button" disabled={confirmingCall} onClick={() => void handleConfirmCall(order.id)} className="shrink-0 rounded-lg bg-primary px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{confirmingCall ? "Saving…" : "Mark call confirmed"}</button></article>)}</div>}
+        {callConfirmedOrders.length > 0 && <div className="mt-5 border-t border-amber-200 pt-4"><h3 className="mb-3 text-sm font-bold text-gray-800">Call confirmed · Ready to process</h3><div className="space-y-2">{callConfirmedOrders.map((order) => <div key={order.id} className="flex flex-col gap-2 rounded-xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-gray-900">#{order.orderNumber} · {order.recipientName}</p><p className="mt-1 text-xs text-gray-600">{order.recipientPhone} · {order.city}</p></div><button type="button" disabled={startingOrder} onClick={() => void handleStartProcessing(order.id)} className="shrink-0 rounded-lg border border-primary px-4 py-2.5 text-xs font-bold text-primary disabled:opacity-50">{startingOrder ? "Starting…" : "Start processing"}</button></div>)}</div></div>}
+      </section>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

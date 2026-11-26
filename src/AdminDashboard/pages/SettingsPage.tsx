@@ -15,6 +15,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import PromoBarSettings from "@/AdminDashboard/components/PromoBarSettings";
+import CouponSettings from "@/AdminDashboard/components/CouponSettings";
 
 const SettingsPage = () => {
   const [storeName, setStoreName] = useState("ShopNow (ShobNow)");
@@ -101,6 +103,9 @@ const SettingsPage = () => {
           </div>
         )}
       </div>
+
+      <PromoBarSettings />
+      <CouponSettings />
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Section 1: Store Information */}
