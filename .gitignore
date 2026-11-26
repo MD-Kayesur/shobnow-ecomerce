@@ -31,4 +31,4 @@ config.bat
 # Environment variables
 .env.*.local
 !.env.example
-
+.env
