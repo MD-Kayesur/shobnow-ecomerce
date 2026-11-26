@@ -25,12 +25,13 @@ import {
   removeFromCart,
   updateQuantity,
   clearCart,
-  applyDiscount,
+  applyDiscountAmount,
   removeDiscount,
 } from "@/redux/features/cart/cartSlice";
 import { MOCK_PRODUCTS } from "@/data/shopData";
 import ProductCard from "@/components/Reuseable/ProductCard";
 import emptyCartImg from "@/assets/empty-cart.jpg";
+import { useValidateCouponMutation } from "@/redux/features/storefront/storefrontApi";
 
 export const Cart: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -42,6 +43,7 @@ export const Cart: React.FC = () => {
   const discount = useAppSelector(selectCartDiscount);
   const appliedCode = useAppSelector(selectCartAppliedCode);
   const grandTotal = useAppSelector(selectCartGrandTotal);
+  const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
 
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -55,23 +57,20 @@ export const Cart: React.FC = () => {
   const finalOrderTotal = grandTotal + shippingFee;
 
   // Handle Coupon Apply
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = couponCode.trim().toUpperCase();
     if (!code) return;
 
-    if (code === "CHOICE10" || code === "SAVE10") {
-      dispatch(applyDiscount({ code, percent: 10 }));
-      setCouponSuccess(`Coupon ${code} applied successfully! 10% off`);
+    try {
+      const result = await validateCoupon({ code, subtotal }).unwrap();
+      dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
+      setCouponSuccess(`Coupon ${result.data.code} applied. You save ৳${result.data.discountAmount.toLocaleString()}.`);
       setCouponError(null);
       setCouponCode("");
-    } else if (code === "BEAUTY15") {
-      dispatch(applyDiscount({ code, percent: 15 }));
-      setCouponSuccess(`Coupon ${code} applied successfully! 15% off`);
-      setCouponError(null);
-      setCouponCode("");
-    } else {
-      setCouponError("Invalid coupon code. Try 'CHOICE10' or 'BEAUTY15'");
+    } catch (error) {
+      const message = (error as { data?: { message?: string | string[] } })?.data?.message;
+      setCouponError(Array.isArray(message) ? message.join(" ") : message || "This coupon could not be applied.");
       setCouponSuccess(null);
     }
   };
@@ -449,16 +448,17 @@ export const Cart: React.FC = () => {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Coupon code (e.g. CHOICE10)"
+                          placeholder="Enter coupon code"
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
                           className="flex-1 px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-pink-800 dark:focus:border-pink-500 focus:ring-1 focus:ring-pink-800 outline-none uppercase"
                         />
                         <button
                           type="submit"
+                          disabled={isValidatingCoupon || !couponCode.trim()}
                           className="px-4 py-2 rounded-xl bg-[#FFE2FF] hover:bg-[#ffd1ff] text-[#500624] text-xs font-bold transition-colors cursor-pointer border border-[#f3c8f3] dark:border-transparent"
                         >
-                          Apply
+                          {isValidatingCoupon ? "Checking..." : "Apply"}
                         </button>
                       </div>
 

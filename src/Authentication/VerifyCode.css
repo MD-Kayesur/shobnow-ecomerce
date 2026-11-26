@@ -1,0 +1,233 @@
+.verify-page {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100svh;
+  place-items: center;
+  overflow: auto;
+  padding: 36px 20px;
+  background: #fff1f7 url("/login-ribbon-background-v2.png") center / cover fixed no-repeat;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.verify-page::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  background: rgba(255, 242, 248, 0.2);
+  content: "";
+}
+
+.verify-card {
+  box-sizing: border-box;
+  width: min(100%, 690px);
+  padding: 46px 58px 38px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 112, 177, 0.65);
+  border-radius: 32px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(255, 246, 251, 0.7));
+  box-shadow: 0 28px 90px rgba(193, 31, 104, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.94);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+  animation: verify-card-in 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+/* The previous split layout remains in the component for compatibility, but this
+   verification screen uses the single centered card from the approved design. */
+.verify-card > div:first-child { display: none !important; }
+
+.verify-form-panel {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.verify-heading { text-align: center; }
+
+.verify-logo {
+  display: block;
+  width: min(230px, 64%);
+  height: auto;
+  max-height: 82px;
+  object-fit: contain;
+  margin: 0 auto 24px;
+}
+
+.verify-heading h1 {
+  margin: 0;
+  color: #172b4d;
+  font-size: clamp(30px, 4.2vw, 42px);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+}
+
+.verify-heading > p {
+  max-width: 500px;
+  margin: 18px auto 4px;
+  color: #687b9e;
+  font-size: clamp(15px, 2vw, 19px);
+  line-height: 1.5;
+}
+
+.verify-address {
+  display: block;
+  color: #172b4d;
+  font-size: clamp(16px, 2vw, 21px);
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.verify-form { margin-top: 26px; }
+
+.verify-code-inputs {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.verify-digit {
+  box-sizing: border-box;
+  width: 74px;
+  height: 74px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 8px 24px rgba(60, 43, 69, 0.08);
+  color: #172b4d;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.verify-digit:focus {
+  transform: translateY(-2px);
+  border-color: #ee3c8b;
+  box-shadow: 0 0 0 4px rgba(231, 44, 126, 0.13), 0 10px 26px rgba(60, 43, 69, 0.1);
+}
+
+.verify-digit:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  box-shadow: none;
+}
+
+.verify-resend-timer {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 22px 0 26px;
+  color: #e72c7e;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.verify-resend-timer > svg { width: 22px; height: 22px; stroke-width: 2.5; }
+.verify-countdown { color: #657796; font-weight: 600; }
+
+.verify-resend-button,
+.verify-resend-prompt button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #e72c7e;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+}
+
+.verify-resend-button:disabled,
+.verify-resend-prompt button:disabled { cursor: wait; opacity: 0.7; }
+
+.verify-submit {
+  display: flex;
+  width: min(100%, 488px);
+  min-height: 70px;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 21px;
+  background: #1b2a3d;
+  box-shadow: 0 14px 28px rgba(24, 38, 58, 0.2);
+  color: #fff;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 750;
+  transition: transform 160ms ease, background 160ms ease, opacity 160ms ease;
+}
+
+.verify-submit:hover:not(:disabled) { transform: translateY(-2px); background: #253a55; }
+.verify-submit:disabled { cursor: not-allowed; opacity: 0.58; }
+.verify-submit svg { width: 24px; height: 24px; }
+.verify-spinner { animation: verify-spin 900ms linear infinite; }
+
+.verify-resend-prompt {
+  margin: 30px 0 0;
+  color: #687b9e;
+  font-size: 16px;
+  text-align: center;
+}
+
+.verify-resend-prompt button { text-decoration: underline; text-underline-offset: 3px; }
+.verify-resend-prompt span { color: #687b9e; font-weight: 650; }
+
+.verify-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 17px;
+  border-top: 1px solid rgba(92, 73, 96, 0.12);
+  font-size: 12px;
+}
+
+.verify-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #687b9e;
+  text-decoration: none;
+}
+
+.verify-links a:hover { color: #e72c7e; }
+.verify-links svg { width: 15px; height: 15px; }
+
+@keyframes verify-spin { to { transform: rotate(360deg); } }
+@keyframes verify-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 600px) {
+  .verify-page { padding: 24px 14px; background-attachment: scroll; background-position: center; }
+  .verify-card { padding: 34px 22px 25px; border-radius: 25px; }
+  .verify-logo { width: min(195px, 66%); max-height: 70px; margin-bottom: 20px; }
+  .verify-heading > p { margin-top: 13px; }
+  .verify-form { margin-top: 23px; }
+  .verify-code-inputs { gap: clamp(6px, 2.2vw, 11px); }
+  .verify-digit { width: clamp(43px, 12vw, 58px); height: clamp(50px, 14vw, 64px); border-radius: 13px; font-size: 24px; }
+  .verify-resend-timer { gap: 6px; margin: 20px 0 23px; font-size: 14px; }
+  .verify-resend-timer > svg { width: 19px; height: 19px; }
+  .verify-submit { min-height: 60px; border-radius: 17px; font-size: 17px; }
+  .verify-resend-prompt { margin-top: 24px; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verify-card { animation: none; }
+  .verify-digit, .verify-submit { transition: none; }
+  .verify-spinner { animation-duration: 1.8s; }
+}

@@ -4,6 +4,7 @@ import AdminSidebar from "./components/AdminSidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
+import "./AdminDashboard.css";
 
 const AdminLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -71,10 +72,10 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FDFBF9] dark:bg-[#0B0F17]">
+    <div className="admin-dashboard-shell flex h-screen overflow-hidden">
       {/* Sidebar - Fixed on Desktop */}
       {!shouldHideSidebar() && (
-        <div className="hidden lg:flex w-72 flex-col fixed inset-y-0 z-30 bg-[#0F141C] border-r border-gray-800">
+        <div className="hidden lg:flex w-72 flex-col fixed inset-y-0 z-30 admin-dashboard-sidebar">
           <AdminSidebar />
         </div>
       )}
@@ -105,14 +106,14 @@ const AdminLayout = () => {
           <SheetTrigger asChild>
             <div className="hidden" />
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 bg-[#0F141C] border-r border-gray-800">
+          <SheetContent side="left" className="w-72 p-0 admin-dashboard-sidebar">
             <AdminSidebar onItemClick={() => setIsMobileMenuOpen(false)} />
           </SheetContent>
         </Sheet>
 
         {/* Scrollable Page Content */}
         <main
-          className={`flex-1 overflow-y-auto mt-16 text-gray-900 dark:text-gray-100 bg-[#FDFBF9] dark:bg-[#090D14] ${
+          className={`flex-1 overflow-y-auto mt-16 admin-dashboard-content ${
             isSidebarOpen ? "pt-4 md:pt-8" : "p-4 md:p-8"
           }`}
         >

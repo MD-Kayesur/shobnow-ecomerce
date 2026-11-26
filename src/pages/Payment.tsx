@@ -1,16 +1,23 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ShieldCheck,
-  CreditCard,
-  Truck,
+  BadgeCheck,
+  Building2,
+  Check,
   CheckCircle2,
+  CreditCard,
   Lock,
   ChevronRight,
+  Map,
   Phone,
+  RotateCcw,
+  ShoppingBag,
+  ShoppingCart,
+  Truck,
   User,
   MapPin,
   FileText,
+  Tag,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/redux-hook";
 import {
@@ -19,8 +26,15 @@ import {
   selectCartDiscount,
   selectCartAppliedCode,
   clearCart,
+  applyDiscountAmount,
+  removeDiscount,
 } from "@/redux/features/cart/cartSlice";
 import { toast } from "sonner";
+import { useCreateOrderMutation, useValidateCouponMutation } from "@/redux/features/storefront/storefrontApi";
+import checkoutBeautyCluster from "@/assets/banners/checkout-beauty-cluster.png";
+
+const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4101/api/v1").replace(/\/api\/v\d+\/?$/, "");
+const imageSource = (source: string) => !source ? "" : /^(https?:|data:|blob:)/i.test(source) ? source : source.startsWith("/uploads/") ? `${apiOrigin}${source}` : source;
 
 export const Payment: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +43,17 @@ export const Payment: React.FC = () => {
   const subtotal = useAppSelector(selectCartSubtotal);
   const discount = useAppSelector(selectCartDiscount);
   const appliedCode = useAppSelector(selectCartAppliedCode);
+  const user = useAppSelector((state) => state.auth.user);
+  const [createOrder] = useCreateOrderMutation();
+  const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
+  const addressStorageKey = `shopnow_addresses_${user?.id || "guest"}`;
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ label: string; address: string; city: string; area: string }>>([]);
+  const [selectedAddress, setSelectedAddress] = useState("new");
+  const [saveAddress, setSaveAddress] = useState(true);
+  const [paymentChoice, setPaymentChoice] = useState<"cod" | "wallet" | "phone">("cod");
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
 
   // Delivery details form state
   const [formData, setFormData] = useState({
@@ -41,18 +66,54 @@ export const Payment: React.FC = () => {
   });
 
   const [deliveryArea, setDeliveryArea] = useState<"inside" | "outside">("inside");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "cod" | "bkash" | "nagad" | "card" | "internet_banking"
-  >("cod");
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [generatedOrderId, setGeneratedOrderId] = useState("");
+  const [generatedOrderTotal, setGeneratedOrderTotal] = useState(0);
 
-  const freeShippingThreshold = 2000;
+  useEffect(() => {
+    if (!user) return;
+    setFormData((previous) => ({ ...previous, fullName: previous.fullName || user.name, phone: previous.phone || user.phone || "", email: previous.email || user.email }));
+    try {
+      const stored = JSON.parse(localStorage.getItem(addressStorageKey) || "[]") as typeof savedAddresses;
+      const addresses = stored.length ? stored : user.address_Pickup_Location ? [{ label: "Home", address: user.address_Pickup_Location, city: "Dhaka", area: "" }] : [];
+      setSavedAddresses(addresses);
+      if (addresses.length) { setSelectedAddress("0"); setFormData((previous) => ({ ...previous, address: addresses[0].address, city: addresses[0].city })); }
+    } catch { setSavedAddresses([]); }
+  }, [user, addressStorageKey]);
+
+  const freeShippingThreshold = 1000;
   const isFreeShipping = subtotal >= freeShippingThreshold;
   const shippingFee = isFreeShipping ? 0 : deliveryArea === "inside" ? 60 : 120;
   const grandTotal = Math.max(0, subtotal - discount + shippingFee);
+
+  useEffect(() => {
+    if (!appliedCode || subtotal <= 0) return;
+    void validateCoupon({ code: appliedCode, subtotal }).unwrap().then((result) => {
+      dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
+    }).catch(() => {
+      dispatch(removeDiscount());
+      setCouponError("This coupon is no longer valid for your order.");
+    });
+  }, [appliedCode, subtotal, validateCoupon, dispatch]);
+
+  const handleApplyCoupon = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    try {
+      const result = await validateCoupon({ code, subtotal }).unwrap();
+      dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
+      setCouponMessage(`৳${result.data.discountAmount.toLocaleString()} discount applied.`);
+      setCouponError("");
+      setCouponInput("");
+    } catch (error) {
+      const message = (error as { data?: { message?: string | string[] } })?.data?.message;
+      setCouponError(Array.isArray(message) ? message.join(" ") : message || "This coupon could not be applied.");
+      setCouponMessage("");
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -68,33 +129,47 @@ export const Payment: React.FC = () => {
       return;
     }
 
-    if (!agreeTerms) {
-      toast.error("Please agree to our terms and conditions to proceed.");
-      return;
-    }
+    if (!agreeTerms) { toast.error("Please confirm the order terms to proceed."); return; }
 
     if (cartItems.length === 0) {
       toast.error("Your cart is empty!");
       return;
     }
 
+    const address = selectedAddress !== "new" ? savedAddresses[Number(selectedAddress)] : null;
+    if (address) setFormData((previous) => ({ ...previous, address: address.address, city: address.city }));
+    const orderAddress = address?.address || formData.address.trim();
+    const orderCity = address?.city || formData.city;
+    if (saveAddress && selectedAddress === "new") {
+      const nextAddresses = [...savedAddresses, { label: "Home", address: orderAddress, city: orderCity, area: deliveryArea }];
+      setSavedAddresses(nextAddresses);
+      localStorage.setItem(addressStorageKey, JSON.stringify(nextAddresses));
+    }
     setIsSubmitting(true);
-    const mockId = `KCB-${Math.floor(100000 + Math.random() * 900000)}`;
-    setGeneratedOrderId(mockId);
-
-    setTimeout(() => {
-      setIsSubmitting(false);
+    void createOrder({
+      items: cartItems.map((item) => ({ productId: String(item.id), ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
+      recipientName: formData.fullName.trim(), recipientPhone: formData.phone.trim(), recipientEmail: formData.email.trim() || undefined,
+      addressLine: orderAddress, city: orderCity, area: address?.area || deliveryArea, customerNote: formData.orderNote.trim() || undefined,
+      couponCode: appliedCode || undefined,
+      paymentMethod: "CALL_CONFIRMATION",
+    }).unwrap().then((response) => {
+      const orderId = response.data.orderNumber;
+      setGeneratedOrderId(orderId);
+      setGeneratedOrderTotal(Number(response.data.total));
       setOrderSuccess(true);
       dispatch(clearCart());
-      toast.success("Order Placed Successfully!", {
-        description: `Order #${mockId} has been confirmed. SMS update sent to ${formData.phone}`,
-      });
-    }, 1200);
+      toast.success("Order submitted. Our team will call you to confirm.");
+    }).catch((error) => {
+      const message = (error as { data?: { message?: string | string[] } })?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(" ") : message || "Could not place your order. Please try again.");
+    }).finally(() => {
+      setIsSubmitting(false);
+    });
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] dark:bg-[#090D14] py-8 sm:py-12 transition-colors duration-200 font-['Inter']">
-      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#fff0f8_0%,_#fff9fc_38%,_#fffafd_78%)] py-5 text-[#171d36] dark:bg-[#090D14] sm:py-7 transition-colors duration-200 font-['Inter']">
+      <div className="mx-auto max-w-[1360px] px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb Navigation */}
         <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-6">
           <Link to="/" className="hover:text-pink-800 dark:hover:text-[#FFE2FF] transition-colors">
@@ -108,39 +183,29 @@ export const Payment: React.FC = () => {
           <span className="text-gray-900 dark:text-white font-semibold">Checkout &amp; Payment</span>
         </nav>
 
+        <section className="relative mb-5 mt-2 flex min-h-[116px] items-center overflow-hidden rounded-[26px] bg-[linear-gradient(105deg,#fffafd_0%,#fff1f8_55%,#ffe3f1_100%)] px-5 py-5 sm:min-h-[132px] sm:px-8">
+          <div className="pointer-events-none absolute -right-10 -top-24 h-52 w-96 rotate-[-13deg] rounded-[50%] bg-white/55" />
+          <div className="pointer-events-none absolute right-10 -top-28 h-52 w-96 rotate-[-13deg] rounded-[50%] border border-white/70" />
+          <div className="relative z-10 flex items-center gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ffe3f2] text-[#b80d4e] shadow-sm sm:h-14 sm:w-14"><Lock size={23}/></span>
+            <div><h1 className="text-2xl font-extrabold tracking-tight text-[#131b32] sm:text-[30px]">Checkout &amp; Payment</h1><p className="mt-1 text-sm text-slate-600 sm:text-[15px]">Complete your order by providing delivery details and selecting a payment method.</p></div>
+          </div>
+          <img src={checkoutBeautyCluster} alt="Pink skincare products and hibiscus flower" className="pointer-events-none absolute -bottom-5 right-0 hidden h-[170px] w-[440px] object-contain object-right-bottom sm:block lg:h-[210px] lg:w-[560px]" />
+        </section>
+
         {/* Checkout Step Progress Bar */}
-        <div className="mb-10 max-w-2xl mx-auto">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            {/* Step 1 */}
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                ✓
-              </span>
-              <span className="text-gray-700 dark:text-gray-300 font-medium hidden sm:inline">1. Cart</span>
-            </div>
-            <div className="flex-1 h-0.5 mx-3 bg-[#FFE2FF] dark:bg-[#FFE2FF]/30" />
-
-            {/* Step 2 (Active with #FFE2FF) */}
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-[#FFE2FF] text-[#500624] font-black flex items-center justify-center text-xs shadow-sm ring-4 ring-[#FFE2FF]/40">
-                2
-              </span>
-              <span className="text-[#500624] dark:text-[#FFE2FF] font-bold">2. Payment</span>
-            </div>
-            <div className="flex-1 h-0.5 mx-3 bg-gray-200 dark:bg-gray-800" />
-
-            {/* Step 3 */}
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center font-bold text-xs">
-                3
-              </span>
-              <span className="text-gray-400 font-medium hidden sm:inline">3. Confirmation</span>
-            </div>
+        <div className="mx-auto mb-5 max-w-[850px] px-2 sm:mb-6">
+          <div className="flex items-center justify-center text-xs font-semibold sm:text-sm">
+            <div className="flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#ffe4f2] text-[#b80d4e] shadow-sm"><ShoppingCart size={20}/></span><span className="whitespace-nowrap text-gray-700">1. Cart</span></div>
+            <div className="mx-3 h-px flex-1 bg-[#ed2b83] sm:mx-5"/>
+            <div className="flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#ffe4f2] text-[#b80d4e] shadow-sm ring-4 ring-[#ffe4f2]/60"><CreditCard size={20}/></span><span className="whitespace-nowrap font-bold text-[#941141]">2. Payment</span></div>
+            <div className="mx-3 h-px flex-1 bg-[#d5d7e1] sm:mx-5"/>
+            <div className="flex items-center gap-2.5"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#f0f1f6] text-slate-400"><Check size={21}/></span><span className="whitespace-nowrap text-slate-500">3. Confirmation</span></div>
           </div>
         </div>
 
         {/* Main 2-Column Checkout Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
           {/* Left Form: Shipping Details & Payment Methods (8 cols) */}
           <div className="lg:col-span-8 space-y-6">
             <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-6">
@@ -148,7 +213,7 @@ export const Payment: React.FC = () => {
               <div className="bg-white dark:bg-[#111622] rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-gray-800 shadow-xs">
                 <div className="flex items-center gap-2.5 pb-4 mb-6 border-b border-gray-100 dark:border-gray-800">
                   <div className="w-9 h-9 rounded-xl bg-[#FFE2FF] text-[#500624] flex items-center justify-center">
-                    <Truck size={18} />
+                    <MapPin size={20} />
                   </div>
                   <div>
                     <h2 className="text-lg font-bold font-['Faustina'] text-gray-900 dark:text-white">
@@ -160,10 +225,21 @@ export const Payment: React.FC = () => {
                   </div>
                 </div>
 
+                {savedAddresses.length > 0 && <div className="mb-5">
+                  <label htmlFor="saved-address" className="mb-1.5 block text-xs font-bold text-gray-700 dark:text-gray-300">Choose a saved address</label>
+                  <select id="saved-address" value={selectedAddress} onChange={(event) => {
+                    setSelectedAddress(event.target.value);
+                    const selected = savedAddresses[Number(event.target.value)];
+                    if (selected) setFormData((previous) => ({ ...previous, address: selected.address, city: selected.city }));
+                  }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800">
+                    {savedAddresses.map((address, index) => <option key={`${address.label}-${index}`} value={index}>{address.label}: {address.address}, {address.city}</option>)}
+                    <option value="new">Use a different address</option>
+                  </select>
+                </div>}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Full Name */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
                       <User size={13} className="text-[#500624] dark:text-[#FFE2FF]" />
                       Full Recipient Name <span className="text-rose-500">*</span>
                     </label>
@@ -174,15 +250,15 @@ export const Payment: React.FC = () => {
                       value={formData.fullName}
                       onChange={handleInputChange}
                       placeholder="e.g. Farhana Akter"
-                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#ed2b83]/15 focus:border-[#ed2b83] outline-none transition-colors"
                     />
                   </div>
 
                   {/* Phone */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
                       <Phone size={13} className="text-[#500624] dark:text-[#FFE2FF]" />
-                      Phone Number (For Courier SMS) <span className="text-rose-500">*</span>
+                      Phone Number (For Order Confirmation Call) <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="tel"
@@ -191,13 +267,13 @@ export const Payment: React.FC = () => {
                       value={formData.phone}
                       onChange={handleInputChange}
                       placeholder="017XX-XXXXXX"
-                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#ed2b83]/15 focus:border-[#ed2b83] outline-none transition-colors"
                     />
                   </div>
 
                   {/* Email */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                       Email Address (Optional)
                     </label>
                     <input
@@ -206,14 +282,14 @@ export const Payment: React.FC = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="farhana@example.com"
-                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#ed2b83]/15 focus:border-[#ed2b83] outline-none transition-colors"
                     />
                   </div>
 
                   {/* Delivery Zone / City */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
-                      Delivery Region <span className="text-rose-500">*</span>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">
+                      <MapPin size={14} className="text-[#b80d4e]"/>Delivery Region <span className="text-rose-500">*</span>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -228,7 +304,7 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Inside Dhaka (৳60)
+                        Inside Dhaka (à§³60)
                       </button>
                       <button
                         type="button"
@@ -242,30 +318,27 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Outside Dhaka (৳120)
+                        Outside Dhaka (à§³120)
                       </button>
                     </div>
                   </div>
 
                   {/* City/District input */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5">
-                      City / District
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-700 dark:text-gray-300">
+                      <Building2 size={14} className="text-[#b80d4e]"/>City / District
                     </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Dhanmondi, Dhaka"
-                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
-                    />
+                    <div className="relative">
+                      <select name="city" value={formData.city} onChange={handleInputChange} className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 outline-none transition-colors focus:border-[#ed2b83] focus:ring-2 focus:ring-[#ed2b83]/15 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                        {["Dhaka", "Chattogram", "Sylhet", "Khulna", "Rajshahi", "Barishal", "Rangpur", "Mymensingh", "Outside Dhaka"].map((city) => <option key={city} value={city}>{city}</option>)}
+                      </select><ChevronRight size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-slate-500"/>
+                    </div>
                   </div>
 
                   {/* Full Detailed Address */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5 flex items-center gap-1.5">
-                      <MapPin size={13} className="text-[#500624] dark:text-[#FFE2FF]" />
+                  <div className={`sm:col-span-2 ${selectedAddress !== "new" ? "hidden" : ""}`}>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                      <Map size={14} className="text-[#b80d4e]" />
                       Full Street Address <span className="text-rose-500">*</span>
                     </label>
                     <textarea
@@ -275,13 +348,13 @@ export const Payment: React.FC = () => {
                       value={formData.address}
                       onChange={handleInputChange}
                       placeholder="House / Flat No., Road No., Area details"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#ed2b83]/15 focus:border-[#ed2b83] outline-none transition-colors"
                     />
                   </div>
 
                   {/* Order Note */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1.5 flex items-center gap-1.5">
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
                       <FileText size={13} className="text-gray-400" />
                       Order Note / Special Delivery Instructions
                     </label>
@@ -291,308 +364,87 @@ export const Payment: React.FC = () => {
                       value={formData.orderNote}
                       onChange={handleInputChange}
                       placeholder="e.g. Call before delivery, deliver after 2 PM"
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#FFE2FF] focus:border-[#500624] outline-none transition-colors"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#ed2b83]/15 focus:border-[#ed2b83] outline-none transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION B: Payment Method Selection */}
-              <div className="bg-white dark:bg-[#111622] rounded-3xl p-6 sm:p-8 border border-gray-100 dark:border-gray-800 shadow-xs">
-                <div className="flex items-center gap-2.5 pb-4 mb-6 border-b border-gray-100 dark:border-gray-800">
-                  <div className="w-9 h-9 rounded-xl bg-[#FFE2FF] text-[#500624] flex items-center justify-center">
-                    <CreditCard size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold font-['Faustina'] text-gray-900 dark:text-white">
-                      Payment Method
-                    </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      All transactions are 256-bit encrypted and verified via SSLCOMMERZ
-                    </p>
-                  </div>
+              <section className="rounded-[24px] border border-[#f0e4eb] bg-white p-5 shadow-[0_8px_26px_rgba(46,17,35,0.045)] sm:p-7">
+                <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#ffe4f2] text-[#b80d4e]"><CreditCard size={21}/></span>
+                  <div><h2 className="text-xl font-extrabold text-[#151d33]">Payment Method</h2><p className="mt-0.5 text-sm text-slate-500">Choose your preferred payment method.</p></div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {/* Option 1: Cash On Delivery */}
-                  <div
-                    onClick={() => setPaymentMethod("cod")}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                      paymentMethod === "cod"
-                        ? "border-[#500624] bg-[#FFE2FF]/30 dark:bg-[#FFE2FF]/10 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 hover:border-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-                        paymentMethod === "cod"
-                          ? "border-[#500624] bg-[#FFE2FF]"
-                          : "border-gray-400"
-                      }`}
-                    >
-                      {paymentMethod === "cod" && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#500624]" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          Cash On Delivery (COD)
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFE2FF] text-[#500624]">
-                          Most Popular
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        Pay cash directly to the courier rider upon delivery at your door.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Option 2: bKash */}
-                  <div
-                    onClick={() => setPaymentMethod("bkash")}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                      paymentMethod === "bkash"
-                        ? "border-[#500624] bg-[#FFE2FF]/30 dark:bg-[#FFE2FF]/10 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 hover:border-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-                        paymentMethod === "bkash"
-                          ? "border-[#500624] bg-[#FFE2FF]"
-                          : "border-gray-400"
-                      }`}
-                    >
-                      {paymentMethod === "bkash" && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#500624]" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          bKash Instant Payment
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E2136E] text-white">
-                          bKash
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        Instant merchant payment via official bKash Payment Gateway.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Option 3: Credit / Debit Cards */}
-                  <div
-                    onClick={() => setPaymentMethod("card")}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                      paymentMethod === "card"
-                        ? "border-[#500624] bg-[#FFE2FF]/30 dark:bg-[#FFE2FF]/10 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 hover:border-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-                        paymentMethod === "card"
-                          ? "border-[#500624] bg-[#FFE2FF]"
-                          : "border-gray-400"
-                      }`}
-                    >
-                      {paymentMethod === "card" && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#500624]" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          Credit &amp; Debit Cards
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40">
-                          Visa / MC / Amex
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        Visa, Mastercard, UnionPay, American Express via SSLCOMMERZ.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Option 4: Nagad / Rocket */}
-                  <div
-                    onClick={() => setPaymentMethod("nagad")}
-                    className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5 ${
-                      paymentMethod === "nagad"
-                        ? "border-[#500624] bg-[#FFE2FF]/30 dark:bg-[#FFE2FF]/10 shadow-xs"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/40 hover:border-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 shrink-0 ${
-                        paymentMethod === "nagad"
-                          ? "border-[#500624] bg-[#FFE2FF]"
-                          : "border-gray-400"
-                      }`}
-                    >
-                      {paymentMethod === "nagad" && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#500624]" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          Nagad / Rocket / Upay
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white">
-                          Nagad
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        Pay conveniently via your Nagad, Rocket, or Upay mobile wallet.
-                      </p>
-                    </div>
-                  </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { id: "cod", title: "Cash on Delivery", subtitle: "Pay in cash when you receive your order.", icon: <Truck size={24}/>, tag: "Popular" },
+                    { id: "wallet", title: "bKash or Nagad", subtitle: "Our team will call and confirm payment details.", icon: <CreditCard size={24}/>, tag: "bKash / Nagad" },
+                    { id: "phone", title: "Confirm by Phone", subtitle: "No payment needed now. We will call to confirm your order.", icon: <Phone size={24}/>, tag: "Call first" },
+                  ].map((option) => {
+                    const selected = paymentChoice === option.id;
+                    return <button key={option.id} type="button" onClick={() => setPaymentChoice(option.id as typeof paymentChoice)} aria-pressed={selected} className={`relative flex min-h-[112px] items-start gap-3 rounded-2xl border p-4 text-left transition-all ${selected ? "border-[#ed2b83] bg-[#fff3f9] shadow-[0_5px_18px_rgba(237,43,131,0.10)] ring-1 ring-[#ed2b83]/15" : "border-[#e9e8ee] bg-white hover:border-pink-200 hover:bg-[#fffafd]"}`}>
+                      <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${selected ? "border-[#ec2680]" : "border-slate-300"}`}>{selected && <span className="h-2.5 w-2.5 rounded-full bg-[#ec2680]"/>}</span>
+                      <span className="min-w-0"><span className="flex items-center gap-2 text-[#d41465]"><span>{option.icon}</span><strong className="text-[13px] leading-tight text-[#161d32]">{option.title}</strong></span><span className="mt-2 block text-[11px] leading-snug text-slate-500">{option.subtitle}</span><span className="mt-2 inline-flex rounded-full bg-[#ffe5f2] px-2 py-0.5 text-[9px] font-bold text-[#a6114e]">{option.tag}</span></span>
+                    </button>;
+                  })}
                 </div>
-
-                {/* Agreement Checkbox */}
-                <div className="flex items-start gap-2.5 pt-6 mt-4 border-t border-gray-100 dark:border-gray-800">
-                  <input
-                    type="checkbox"
-                    id="checkout-agree"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="mt-0.5 rounded border-gray-300 text-[#500624] focus:ring-[#FFE2FF] cursor-pointer"
-                  />
-                  <label
-                    htmlFor="checkout-agree"
-                    className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none"
-                  >
-                    I have read and agree to SHOB Now's{" "}
-                    <Link to="/terms" className="text-pink-800 dark:text-[#FFE2FF] underline font-semibold">
-                      Terms &amp; Conditions
-                    </Link>
-                    ,{" "}
-                    <Link to="/refund-policy" className="text-pink-800 dark:text-[#FFE2FF] underline font-semibold">
-                      Refund Policy
-                    </Link>
-                    , and{" "}
-                    <Link to="/privacy-policy" className="text-pink-800 dark:text-[#FFE2FF] underline font-semibold">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </label>
+                <div className="mt-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+                  {selectedAddress === "new" && <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-[#ec2680]"/>Save this address as Home for next time</label>}
+                  <p className="flex items-center gap-2 text-xs text-slate-500 sm:ml-auto"><Phone size={14} className="text-[#d41465]"/>Order confirmation call: <strong className="text-slate-800">{formData.phone || "add your phone number"}</strong></p>
                 </div>
-              </div>
+                <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-600">
+                  <input type="checkbox" id="checkout-agree" checked={agreeTerms} onChange={(event) => setAgreeTerms(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 accent-[#ec2680]"/>
+                  <span>I have read and agree to SHOB Now's <Link to="/terms" className="font-semibold text-[#d41465] underline">Terms &amp; Conditions</Link>, <Link to="/refund-policy" className="font-semibold text-[#d41465] underline">Refund Policy</Link>, and <Link to="/privacy-policy" className="font-semibold text-[#d41465] underline">Privacy Policy</Link>.</span>
+                </label>
+              </section>
             </form>
           </div>
 
-          {/* Right Column: Order Summary (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            <div className="bg-white dark:bg-[#111622] rounded-3xl p-6 sm:p-7 border border-gray-100 dark:border-gray-800 shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                <h3 className="text-lg font-bold font-['Faustina'] text-gray-900 dark:text-white">
-                  Order Summary
-                </h3>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#FFE2FF] text-[#500624]">
-                  {cartItems.length} {cartItems.length === 1 ? "item" : "items"}
-                </span>
+          {/* Right Column: Order Summary */}
+          <aside className="space-y-4 lg:col-span-4 lg:sticky lg:top-28">
+            <div className="rounded-[24px] border border-[#f0e4eb] bg-white p-5 shadow-[0_8px_26px_rgba(46,17,35,0.055)] sm:p-6">
+              <div className="mb-1 flex items-center justify-between border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#ffe4f2] text-[#b80d4e]"><ShoppingBag size={21}/></span><h2 className="text-xl font-extrabold text-[#151d33] sm:text-[22px]">Order Summary</h2></div>
+                <span className="rounded-full bg-[#ffe4f2] px-3 py-1.5 text-xs font-bold text-[#9f174c]">{cartItems.reduce((count, item) => count + item.quantity, 0)} pieces</span>
               </div>
-
-              {/* Items List Snapshot */}
-              <div className="max-h-60 overflow-y-auto space-y-3 pr-1 divide-y divide-gray-100 dark:divide-gray-800/60 no-scrollbar">
-                {cartItems.map((item) => (
-                  <div
-                    key={`${item.id}-${item.selectedSize}`}
-                    className="pt-2 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-10 h-10 rounded-lg object-contain bg-gray-50 dark:bg-gray-800 shrink-0 border border-gray-100 dark:border-gray-700"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-800 dark:text-gray-200 truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-[11px] text-gray-400">
-                          Qty: {item.quantity} {item.selectedSize ? `• ${item.selectedSize}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-bold text-gray-900 dark:text-white shrink-0">
-                      ৳{(item.price * item.quantity).toLocaleString()}
-                    </span>
+              <div className="max-h-60 divide-y divide-slate-100 overflow-y-auto pr-1">
+                {cartItems.map((item) => <div key={`${item.id}-${item.selectedSize}`} className="flex items-center justify-between gap-3 py-3">
+                  <div className="flex min-w-0 items-center gap-3"><img src={imageSource(item.image)} alt={item.name} onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} className="h-[68px] w-[68px] shrink-0 rounded-xl border border-pink-100 bg-[#fff3f8] object-contain p-1"/><div className="min-w-0"><p className="line-clamp-2 text-sm font-bold text-[#171d32]">{item.name}</p><p className="mt-1 text-xs text-slate-500">Qty: {item.quantity}{item.selectedSize ? ` ? ${item.selectedSize}` : ""}</p></div></div>
+                  <span className="shrink-0 text-sm font-bold text-[#161d32]">?{(item.price * item.quantity).toLocaleString()}</span>
+                </div>)}
+                {cartItems.length === 0 && <p className="py-5 text-sm text-slate-500">Your cart is empty.</p>}
+              </div>
+              <div className="border-t border-slate-100 py-4">
+                {appliedCode ? (
+                  <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+                    <span className="flex items-center gap-2"><Tag size={15}/><strong>{appliedCode}</strong> applied</span>
+                    <button type="button" onClick={() => { dispatch(removeDiscount()); setCouponMessage(""); setCouponError(""); }} className="text-xs font-semibold underline">Remove</button>
                   </div>
-                ))}
-              </div>
-
-              {/* Pricing breakdown */}
-              <div className="space-y-2.5 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    ৳{subtotal.toLocaleString()}
-                  </span>
-                </div>
-
-                {discount > 0 && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                    <span>Discount ({appliedCode ? String(appliedCode) : "COUPON"})</span>
-                    <span>-৳{discount.toLocaleString()}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center">
-                  <span>Delivery ({deliveryArea === "inside" ? "Dhaka" : "Outside Dhaka"})</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {isFreeShipping ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">FREE</span>
-                    ) : (
-                      `৳${shippingFee}`
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-800 text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                  <span>Grand Total</span>
-                  <span className="text-xl sm:text-2xl font-black text-[#500624] dark:text-[#FFE2FF]">
-                    ৳{grandTotal.toLocaleString()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Confirm & Place Order Button styled with #FFE2FF */}
-              <button
-                type="submit"
-                form="checkout-form"
-                disabled={isSubmitting || cartItems.length === 0}
-                className="w-full py-4 px-6 rounded-2xl bg-[#FFE2FF] hover:bg-[#ffd1ff] text-[#500624] font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 border border-pink-200/50"
-              >
-                {isSubmitting ? (
-                  <span>Processing Order...</span>
                 ) : (
-                  <>
-                    <Lock size={16} />
-                    <span>Confirm &amp; Place Order (৳{grandTotal.toLocaleString()})</span>
-                  </>
+                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                    <input aria-label="Coupon code" value={couponInput} onChange={(event) => setCouponInput(event.target.value)} placeholder="Coupon code" className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-sm uppercase outline-none focus:border-pink-400" />
+                    <button type="submit" disabled={isValidatingCoupon || !couponInput.trim()} className="rounded-xl bg-[#ffe4f2] px-4 text-sm font-bold text-[#9f174c] disabled:opacity-50">{isValidatingCoupon ? "Checking..." : "Apply"}</button>
+                  </form>
                 )}
-              </button>
-
-              {/* Security badges */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={15} className="text-emerald-500 shrink-0" />
-                  <span>100% Certified Genuine Korean Beauty Products</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Lock size={15} className="text-[#500624] dark:text-[#FFE2FF] shrink-0" />
-                  <span>PCI-DSS SSLCOMMERZ 256-bit Encrypted Checkout</span>
-                </div>
+                {couponError && <p className="mt-2 text-xs text-rose-600">{couponError}</p>}
+                {couponMessage && <p className="mt-2 text-xs text-emerald-700">{couponMessage}</p>}
+              </div>
+              <div className="space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-700">
+                <div className="flex justify-between"><span>Subtotal</span><strong className="text-[#171d32]">?{subtotal.toLocaleString()}</strong></div>
+                <div className="flex items-center justify-between"><span>Delivery Fee ({deliveryArea === "inside" ? "Inside Dhaka" : "Outside Dhaka"})</span>{isFreeShipping ? <strong className="text-emerald-600">FREE</strong> : <strong className="text-[#171d32]">?{shippingFee}</strong>}</div>
+                {discount > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-2">Discount / Coupon <span className="rounded-full bg-[#ffe4f2] px-2 py-1 text-[9px] font-extrabold text-[#c8175b]">{appliedCode ? String(appliedCode) : "COUPON"}</span></span><strong className="text-[#d41465]">??{discount.toLocaleString()}</strong></div>}
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-lg font-extrabold text-[#111a31] sm:text-xl"><span>Grand Total</span><strong className="text-2xl font-black text-[#e31968] sm:text-[28px]">?{grandTotal.toLocaleString()}</strong></div>
+              </div>
+              <button type="submit" form="checkout-form" disabled={isSubmitting || cartItems.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#f51372] to-[#e90068] px-5 py-4 text-base font-extrabold text-white shadow-[0_9px_20px_rgba(233,0,104,0.22)] transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? <span>Processing Order...</span> : <><Lock size={19}/><span>Confirm &amp; Place Order</span></>}</button>
+              <div className="mt-5 grid grid-cols-2 gap-y-4 border-t border-slate-100 pt-4 text-[11px]">
+                <div className="flex items-center gap-2 border-r border-slate-100 pr-2"><BadgeCheck size={23} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">100% Authentic</strong><span className="text-slate-500">Genuine beauty products</span></span></div>
+                <div className="flex items-center gap-2 pl-3"><Lock size={22} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">SSL Secured Checkout</strong><span className="text-slate-500">Your data is protected</span></span></div>
+                <div className="flex items-center gap-2 border-r border-t border-slate-100 pr-2 pt-3"><RotateCcw size={23} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">Easy Return</strong><span className="text-slate-500">Hassle-free &amp; quick</span></span></div>
+                <div className="flex items-center gap-2 border-t border-slate-100 pl-3 pt-3"><Truck size={25} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">Delivery Across Bangladesh</strong><span className="text-slate-500">All cities &amp; districts</span></span></div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
 
@@ -605,7 +457,7 @@ export const Payment: React.FC = () => {
             </div>
 
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#500624] dark:text-[#FFE2FF] bg-[#FFE2FF]/50 dark:bg-[#FFE2FF]/20 px-3 py-1 rounded-full">
-              Order Verified &amp; Confirmed
+              Order Pending
             </span>
 
             <h2 className="text-2xl sm:text-3xl font-bold font-['Faustina'] text-gray-900 dark:text-white mt-3">
@@ -613,7 +465,7 @@ export const Payment: React.FC = () => {
             </h2>
 
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
-              We have received your order <strong>#{generatedOrderId}</strong>. A confirmation SMS with real-time parcel tracking has been sent to <strong>{formData.phone}</strong>.
+              Your order <strong>#{generatedOrderId}</strong> has been sent to our team and is pending confirmation. We will call <strong>{formData.phone}</strong> before processing it.
             </p>
 
             <div className="my-6 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 text-left text-xs space-y-1.5">
@@ -623,11 +475,11 @@ export const Payment: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Payment Option:</span>
-                <span className="font-bold text-gray-900 dark:text-white uppercase">{paymentMethod}</span>
+                <span className="font-bold text-gray-900 dark:text-white uppercase">Phone confirmation</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Total Amount:</span>
-                <span className="font-bold text-[#500624] dark:text-[#FFE2FF]">৳{grandTotal.toLocaleString()}</span>
+                <span className="font-bold text-[#500624] dark:text-[#FFE2FF]">à§³{generatedOrderTotal.toLocaleString()}</span>
               </div>
             </div>
 

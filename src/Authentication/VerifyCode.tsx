@@ -2,50 +2,108 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowRight,
   ArrowLeft,
-  Sparkles,
-  ShieldCheck,
+  ArrowRight,
   CheckCircle2,
-  Truck,
+  LoaderCircle,
   RotateCcw,
-  Check,
-  Lock,
+  ShieldCheck,
+  Sparkles,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import authPhoto from "@/assets/photo/signup.svg";
+import { useAppDispatch } from "@/redux/hooks/redux-hook";
+import { setUser } from "@/redux/features/auth/authSlice";
+import { OtpType } from "@/redux/types/auth.type";
+import { useResendOtpMutation, useVerifyOtpMutation } from "@/redux/features/auth/authApi";
+import "./VerifyCode.css";
+
+const getOtpErrorMessage = (error: unknown) => {
+  const apiError = error as {
+    data?: { message?: string | string[]; errors?: { message?: string }[] };
+    error?: string;
+  };
+  const message =
+    apiError?.data?.message ??
+    apiError?.data?.errors?.[0]?.message ??
+    apiError?.error ??
+    "We could not verify that code. Please try again.";
+  return Array.isArray(message) ? message.join(" ") : message;
+};
+
+const isInvalidOtpError = (error: unknown) => {
+  const apiError = error as {
+    data?: { error?: string; message?: string | string[] };
+    error?: string;
+  };
+  const code = apiError?.data?.error?.toUpperCase();
+  const rawMessage = apiError?.data?.message ?? apiError?.error ?? "";
+  const message = Array.isArray(rawMessage) ? rawMessage.join(" ") : rawMessage;
+  return code === "OTP_INVALID" || /invalid\s+(otp|code)|otp\s+is\s+invalid/i.test(message);
+};
+
+const OTP_VALIDITY_SECONDS = 10 * 60;
+const RESEND_COOLDOWN_SECONDS = OTP_VALIDITY_SECONDS;
 
 const VerifyCode = () => {
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState("email");
+  const [otpType, setOtpType] = useState<OtpType>("ACCOUNT_VERIFY");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [countdown, setCountdown] = useState(59);
+  const [countdown, setCountdown] = useState(RESEND_COOLDOWN_SECONDS);
+  const [otpExpiresIn, setOtpExpiresIn] = useState(OTP_VALIDITY_SECONDS);
   const [canResend, setCanResend] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [challengeId, setChallengeId] = useState("");
+  const [verifyOtp, { isLoading: isVerifying }] = useVerifyOtpMutation();
+  const [resendOtp, { isLoading: isResending }] = useResendOtpMutation();
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Load identifier from previous step or default
+  // Load the email and OTP purpose saved by registration or password recovery.
   useEffect(() => {
-    const saved = sessionStorage.getItem("auth_reset_identifier") || "ayesha.r@gmail.com";
-    const method = sessionStorage.getItem("auth_reset_method") || "email";
-    setIdentifier(saved);
-    setDeliveryMethod(method);
-    inputRefs.current[0]?.focus();
-  }, []);
-
-  // Countdown timer effect
-  useEffect(() => {
-    if (countdown <= 0) {
-      setCanResend(true);
+    const saved = sessionStorage.getItem("auth_reset_identifier") || "";
+    const savedType = sessionStorage.getItem("auth_otp_type");
+    setChallengeId(sessionStorage.getItem("auth_otp_challenge_id") || "");
+    if (!saved) {
+      navigate("/signup", { replace: true });
       return;
     }
+    setIdentifier(saved);
+    let expiresAt = Number(sessionStorage.getItem("auth_otp_expires_at"));
+    if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+      expiresAt = Date.now() + OTP_VALIDITY_SECONDS * 1000;
+      sessionStorage.setItem("auth_otp_expires_at", String(expiresAt));
+    }
+    setOtpExpiresIn(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+    let resendAt = Number(sessionStorage.getItem("auth_otp_resend_at"));
+    if (!Number.isFinite(resendAt) || resendAt < expiresAt) {
+      resendAt = expiresAt;
+      sessionStorage.setItem("auth_otp_resend_at", String(resendAt));
+    }
+    const resendRemaining = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+    setCountdown(resendRemaining);
+    setCanResend(resendRemaining === 0);
+    if (savedType === "PASSWORD_RESET" || savedType === "LOGIN") {
+      setOtpType(savedType);
+    }
+    inputRefs.current[0]?.focus();
+  }, [navigate]);
+
+  // Keep both timers anchored to absolute deadlines so refreshes do not reset them.
+  useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown((prev) => prev - 1);
+      const expiresAt = Number(sessionStorage.getItem("auth_otp_expires_at") || 0);
+      const resendAt = Number(sessionStorage.getItem("auth_otp_resend_at") || 0);
+      const expiryRemaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      const resendRemaining = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+      setOtpExpiresIn(expiryRemaining);
+      setCountdown(resendRemaining);
+      setCanResend(resendRemaining === 0);
     }, 1000);
     return () => clearInterval(timer);
-  }, [countdown]);
+  }, []);
 
   // Mask identifier for visual privacy (e.g. ay***r@gmail.com)
   const maskedIdentifier = () => {
@@ -97,43 +155,101 @@ const VerifyCode = () => {
   };
 
   // Resend code handler
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
-    setCountdown(59);
-    setCanResend(false);
-    setOtp(["", "", "", "", "", ""]);
-    inputRefs.current[0]?.focus();
-
-    toast.success("New verification code dispatched!", {
-      description: `A fresh 6-digit OTP was sent to ${identifier}.`,
-    });
+    try {
+      await resendOtp({
+        email: identifier,
+        type: otpType,
+        ...(otpType === "LOGIN" && challengeId ? { challengeId } : {}),
+      }).unwrap();
+      const resendAt = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
+      sessionStorage.setItem("auth_otp_resend_at", String(resendAt));
+      setCountdown(RESEND_COOLDOWN_SECONDS);
+      setCanResend(false);
+      const expiresAt = Date.now() + OTP_VALIDITY_SECONDS * 1000;
+      sessionStorage.setItem("auth_otp_expires_at", String(expiresAt));
+      setOtpExpiresIn(OTP_VALIDITY_SECONDS);
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+      toast.success(`A new verification code was sent to ${maskedIdentifier()}.`);
+    } catch (error: unknown) {
+      const message = getOtpErrorMessage(error);
+      toast.error(message);
+    }
   };
 
   // Submit code
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
+    const expiresAt = Number(sessionStorage.getItem("auth_otp_expires_at") || 0);
+    if (otpExpiresIn <= 0 || !expiresAt || Date.now() >= expiresAt) {
+      setOtpExpiresIn(0);
+      toast.error("This verification code has expired. Resend a new code to continue.");
+      return;
+    }
     if (code.length < 6) {
       toast.error("Please enter the complete 6-digit code.");
       return;
     }
 
-    setIsLoading(true);
-    sessionStorage.setItem("auth_otp_verified", "true");
+    try {
+      const result = await verifyOtp({
+        email: identifier,
+        code,
+        type: otpType,
+        ...(otpType === "LOGIN" && challengeId ? { challengeId } : {}),
+      }).unwrap();
+      if (otpType === "PASSWORD_RESET" && result.data && "resetToken" in result.data) {
+        sessionStorage.setItem("auth_password_reset_token", result.data.resetToken);
+        toast.success("Email verified. You can now set a new password.");
+        navigate("/reset-password");
+        return;
+      }
 
-    toast.success("Identity verified successfully!", {
-      description: "Now choose a strong new password.",
-    });
-
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/reset-password");
-    }, 500);
+      if (result.data && "accessToken" in result.data) {
+        const normalizedUser = {
+          ...result.data.user,
+          role: String(result.data.user.role).toLowerCase() === "admin" ? "admin" as const : "user" as const,
+        };
+        dispatch(setUser({ user: normalizedUser, token: result.data.accessToken }));
+        sessionStorage.removeItem("auth_reset_identifier");
+        sessionStorage.removeItem("auth_reset_method");
+        sessionStorage.removeItem("auth_otp_type");
+        sessionStorage.removeItem("auth_otp_expires_at");
+        sessionStorage.removeItem("auth_otp_resend_at");
+        sessionStorage.removeItem("auth_otp_challenge_id");
+        toast.success("Your email is verified. Welcome to Shop Now!");
+        navigate(normalizedUser.role === "admin" ? "/admin-dashboard" : "/user-dashboard");
+      }
+    } catch (error: unknown) {
+      if (isInvalidOtpError(error)) {
+        setOtp(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+      }
+      toast.error(getOtpErrorMessage(error));
+    }
   };
 
+  const isLoading = isVerifying || isResending;
+  const isPasswordRecovery = otpType === "PASSWORD_RESET";
+  const returnPath = isPasswordRecovery
+    ? "/forgot-password"
+    : otpType === "ACCOUNT_VERIFY"
+      ? "/signup"
+      : "/login";
+  const returnLabel = isPasswordRecovery
+    ? "Back to Forgot Password"
+    : otpType === "ACCOUNT_VERIFY"
+      ? "Back to Register"
+      : "Back to Login";
+  const formatTime = (seconds: number) =>
+    `${Math.floor(seconds / 60).toString().padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+
   return (
-    <div className="min-h-screen bg-[#FDFBF9] dark:bg-[#090D14] flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-colors duration-200">
-      <div className="max-w-5xl w-full flex flex-col md:flex-row overflow-hidden rounded-3xl bg-white dark:bg-[#111622] border border-pink-100/80 dark:border-gray-800 shadow-[0_20px_60px_-15px_rgba(162,14,76,0.08)] dark:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)]">
+    <main className="verify-page">
+      <section className="verify-card" aria-labelledby="verify-title">
         {/* Left Side - Luxury Brand Banner */}
         <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#A20E4C] via-[#7E0B3B] to-[#4A0623] p-8 lg:p-10 text-white relative overflow-hidden flex-col justify-between">
           <div className="absolute -top-24 -left-24 w-72 h-72 bg-pink-400/20 rounded-full blur-3xl pointer-events-none" />
@@ -181,113 +297,95 @@ const VerifyCode = () => {
         </div>
 
         {/* Right Side - Code Input Form */}
-        <div className="w-full md:w-1/2 p-6 sm:p-10 flex flex-col justify-center bg-white dark:bg-[#111622] transition-colors duration-200">
-          <div className="mb-6 text-center md:text-left">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold tracking-wider text-pink-800 dark:text-pink-300 uppercase bg-pink-50 dark:bg-pink-950/40 rounded-full border border-pink-200/60 dark:border-pink-900/50 mb-2">
-              <Lock size={13} />
-              <span>Step 2 of 3 • Authenticate</span>
-            </span>
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-['Faustina'] font-bold tracking-tight text-zinc-900 dark:text-white">
-              Enter 6-Digit Code
-            </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm mt-1 font-['Inter']">
-              Sent to <span className="font-semibold text-zinc-800 dark:text-zinc-200">{maskedIdentifier()}</span> (
-              {deliveryMethod === "email" ? "Email" : "SMS"}).
+        <div className="verify-form-panel">
+          <div className="verify-heading">
+            <img className="verify-logo" src="/Glossy%20Pink%20Shopping%20Arrow%20Logo.png" alt="Shop Now" />
+            <h1 id="verify-title">{isPasswordRecovery ? "Password Reset" : "OTP Verification"}</h1>
+            <p>
+              {isPasswordRecovery
+                ? "We've sent a 6-digit password reset code to your email address"
+                : "We've sent a 6-digit code to your email address"}
             </p>
+            <strong className="verify-address">{identifier || "you@example.com"}</strong>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="verify-form">
             {/* 6 Digit Input Boxes */}
-            <div className="flex justify-between gap-2 sm:gap-3">
+            <div className="verify-code-inputs" role="group" aria-label="Six-digit verification code">
               {otp.map((digit, idx) => (
                 <input
                   key={idx}
                   ref={(el) => {
                     inputRefs.current[idx] = el;
                   }}
-                  type="text"
+                  type="password"
                   inputMode="numeric"
+                  autoComplete={idx === 0 ? "one-time-code" : "off"}
+                  pattern="[0-9]*"
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handleChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(idx, e)}
                   onPaste={handlePaste}
-                  className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold rounded-xl bg-gray-50/80 dark:bg-gray-800/60 text-zinc-900 dark:text-white border border-gray-200 dark:border-gray-700 focus:border-pink-800 dark:focus:border-pink-500 focus:ring-2 focus:ring-pink-800/20 outline-none transition shadow-2xs"
-                  aria-label={`Digit ${idx + 1}`}
+                  disabled={otpExpiresIn <= 0}
+                  className="verify-digit"
+                  aria-label={`Code digit ${idx + 1}`}
                 />
               ))}
             </div>
 
             {/* Countdown / Resend Section */}
-            <div className="flex items-center justify-between text-xs sm:text-sm font-['Inter']">
-              <span className="text-gray-500 dark:text-gray-400">
-                Didn't receive code?
-              </span>
+            <div className="verify-resend-timer" aria-live="polite">
 
               {canResend ? (
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="inline-flex items-center gap-1.5 text-pink-800 dark:text-pink-400 font-bold hover:underline cursor-pointer"
+                  disabled={isResending}
+                  className="verify-resend-button"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Resend Code</span>
+                  <RotateCcw aria-hidden="true" />
+                  <span>{isResending ? "Sending code…" : "Resend Code"}</span>
                 </button>
               ) : (
-                <span className="text-gray-400 dark:text-gray-500 font-medium font-mono">
-                  Resend in 00:{countdown.toString().padStart(2, "0")}
-                </span>
+                <>
+                  <RotateCcw aria-hidden="true" />
+                  <span>Resend Code</span>
+                  <span className="verify-countdown">in {formatTime(countdown)}</span>
+                </>
               )}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || otp.join("").length < 6}
-              className="w-full bg-[#FFE2FF] hover:bg-[#ffd1ff] text-[#500624] font-bold py-3 sm:py-3.5 rounded-xl transition-all duration-200 cursor-pointer shadow-xs flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.99]"
+              disabled={isLoading || otp.join("").length < 6 || otpExpiresIn <= 0}
+              className="verify-submit"
+              aria-busy={isVerifying}
             >
-              <Check className="w-4 h-4" />
-              <span>{isLoading ? "Verifying..." : "Verify & Proceed"}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>{isVerifying ? "Verifying…" : "Verify OTP"}</span>
+              {isVerifying ? <LoaderCircle className="verify-spinner" /> : <ArrowRight aria-hidden="true" />}
             </button>
           </form>
 
-          {/* Quick Demo Pre-fill */}
-          <div className="mt-5 p-3 rounded-xl bg-pink-50/60 dark:bg-pink-950/20 border border-pink-200/50 dark:border-pink-900/40">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-pink-900 dark:text-pink-300 uppercase tracking-wider">
-                🧪 Instant Test Code:
-              </span>
-              <button
-                type="button"
-                onClick={() => setOtp(["1", "2", "3", "4", "5", "6"])}
-                className="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 text-pink-800 dark:text-pink-300 border border-pink-200 dark:border-pink-800 hover:bg-pink-100/50 cursor-pointer text-xs font-semibold"
-              >
-                Auto-fill 123456
-              </button>
-            </div>
-          </div>
-
           {/* Navigation Back */}
-          <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-800 text-xs sm:text-sm font-['Inter']">
-            <Link
-              to="/forgot-password"
-              className="inline-flex items-center gap-1.5 text-gray-600 dark:text-gray-400 hover:text-pink-800 dark:hover:text-pink-300 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Change Address / Phone</span>
+          <p className="verify-resend-prompt">
+            Didn’t receive the code?{" "}
+            {canResend ? (
+              <button type="button" onClick={handleResend} disabled={isResending}>Resend Code</button>
+            ) : (
+              <span>Resend in {formatTime(countdown)}</span>
+            )}
+          </p>
+          <nav className="verify-links" aria-label="Verification navigation">
+            <Link to={returnPath}>
+              <ArrowLeft aria-hidden="true" /> {returnLabel}
             </Link>
-
-            <Link
-              to="/login"
-              className="text-gray-500 hover:text-pink-800 dark:text-gray-400 dark:hover:text-pink-300"
-            >
-              Cancel
-            </Link>
-          </div>
+            {returnPath !== "/login" && <Link to="/login">Back to Login</Link>}
+          </nav>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

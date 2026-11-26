@@ -11,6 +11,7 @@ import {
   VerifyCode,
   ResetPassword,
 } from "@/Authentication";
+import SocialAuthCallback from "@/Authentication/SocialAuthCallback";
 import TopSelling from "@/pages/TopSelling";
 import Cart from "@/pages/Cart";
 import Payment from "@/pages/Payment";
@@ -27,10 +28,15 @@ import {
   AdminDashboardPage,
   SettingsPage,
   ProductsPage,
+  BannersPage,
   OrdersPage,
   CustomersPage,
   CategoriesBrandsPage,
+  ActivityLogsPage,
+  ErrorLogsPage,
+  NewsletterSubscribersPage,
 } from "@/AdminDashboard";
+import AddProductWizardPage from "@/AdminDashboard/pages/AddProductWizardPage";
 
 import {
   UserLayout,
@@ -121,6 +127,10 @@ const routes = createBrowserRouter([
       {
         path: "/verify-otp",
         element: <VerifyCode />,
+      },
+      {
+        path: "/auth/social/callback",
+        element: <SocialAuthCallback />,
       },
       {
         path: "/reset-password",
@@ -218,10 +228,16 @@ const routes = createBrowserRouter([
       { path: "dashboard", element: <AdminDashboardPage /> },
       { path: "orders", element: <OrdersPage /> },
       { path: "products", element: <ProductsPage /> },
+      { path: "banners", element: <BannersPage /> },
+      { path: "add-product", element: <AddProductWizardPage /> },
       { path: "inventory", element: <ProductsPage /> },
       { path: "categories", element: <CategoriesBrandsPage /> },
       { path: "brands", element: <CategoriesBrandsPage /> },
       { path: "customers", element: <CustomersPage /> },
+      { path: "users", element: <CustomersPage /> },
+      { path: "activity-logs", element: <ActivityLogsPage /> },
+      { path: "error-logs", element: <ErrorLogsPage /> },
+      { path: "newsletter", element: <NewsletterSubscribersPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "audit-log", element: <SettingsPage /> },
     ],

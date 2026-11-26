@@ -2,10 +2,13 @@
 export { default as AdminLayout } from "./AdminLayout";
 export { default as AdminDashboardPage } from "./pages/AdminDashboardPage";
 export { default as ProductsPage } from "./pages/ProductsPage";
+export { default as BannersPage } from "./pages/BannersPage";
 export { default as OrdersPage } from "./pages/OrdersPage";
 export { default as CustomersPage } from "./pages/CustomersPage";
 export { default as CategoriesBrandsPage } from "./pages/CategoriesBrandsPage";
 export { default as SettingsPage } from "./pages/SettingsPage";
+export { ActivityLogsPage, ErrorLogsPage } from "./pages/AuditLogsPage";
+export { default as NewsletterSubscribersPage } from "./pages/NewsletterSubscribersPage";
 
 export { default as AdminSidebar } from "./components/AdminSidebar";
 export { default as AdminDashboardNavBar } from "./components/AdminDashboardNavBar";

@@ -10,7 +10,9 @@ type AdminRouteProps = {
 
 const AdminRoute = ({ children }: AdminRouteProps) => {
   const user = useSelector((state: AppRootState) => state.auth.user);
-  console.log("Admin Data:", user);
+  const isInitialized = useSelector((state: AppRootState) => state.auth.isInitialized);
+
+  if (!isInitialized) return <div role="status" className="auth-session-loading">Restoring your secure session…</div>;
 
   if (!user || user.role !== "admin") {
     return <Navigate to="/login" replace />;

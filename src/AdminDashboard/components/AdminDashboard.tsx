@@ -58,10 +58,10 @@ const AdminDashboard = () => {
       {/* Page Title & Status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
             Store Overview & Control Center
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Real-time sales, order processing status, and inventory insights.
           </p>
         </div>
@@ -86,13 +86,13 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Link
           to="/admin-dashboard/products"
-          className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
+          className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
         >
           <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform border border-primary/20">
             <Package className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+            <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
               Products / Inventory
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Manage stock & prices</p>
@@ -101,13 +101,13 @@ const AdminDashboard = () => {
 
         <Link
           to="/admin-dashboard/orders"
-          className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
+          className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
         >
           <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform border border-primary/20">
             <ShoppingBag className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+            <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
               Orders Management
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Fulfillment & Invoices</p>
@@ -116,13 +116,13 @@ const AdminDashboard = () => {
 
         <Link
           to="/admin-dashboard/customers"
-          className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
+          className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
         >
           <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform border border-primary/20">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+            <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
               Customers
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Accounts & Loyalty</p>
@@ -131,13 +131,13 @@ const AdminDashboard = () => {
 
         <Link
           to="/admin-dashboard/categories"
-          className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
+          className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
         >
           <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform border border-primary/20">
             <Layers className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+            <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
               Categories & Brands
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">12 Categories & Partners</p>
@@ -146,13 +146,13 @@ const AdminDashboard = () => {
 
         <Link
           to="/admin-dashboard/settings"
-          className="p-4 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
+          className="p-4 bg-white rounded-2xl border border-gray-200/80 shadow-xs hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
         >
           <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-transform border border-primary/20">
             <Settings className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+            <h3 className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">
               Store Settings
             </h3>
             <p className="text-[11px] text-gray-400 mt-0.5">Shipping, fees & themes</p>
@@ -163,11 +163,11 @@ const AdminDashboard = () => {
       {/* Grid: Recent Orders & Low Stock Highlights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Recent Orders Preview */}
-        <div className="p-5 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="p-5 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">
+              <h2 className="text-base font-bold text-gray-900 ">
                 Recent Customer Orders
               </h2>
             </div>
@@ -179,11 +179,11 @@ const AdminDashboard = () => {
             </Link>
           </div>
 
-          <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
+          <div className="divide-y divide-gray-100 ">
             {RECENT_ORDERS_PREVIEW.map((order) => (
               <div key={order.id} className="py-3 flex items-center justify-between gap-3 text-sm">
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <p className="font-semibold text-gray-900 flex items-center gap-2">
                     <span>#{order.id}</span>
                     <span className="text-xs text-gray-400 font-normal">• {order.customer}</span>
                   </p>
@@ -191,7 +191,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="text-right shrink-0">
-                  <p className="font-bold text-gray-900 dark:text-white">
+                  <p className="font-bold text-gray-900 ">
                     ৳{order.total.toLocaleString()}
                   </p>
                   <span
@@ -214,11 +214,11 @@ const AdminDashboard = () => {
         </div>
 
         {/* Low Stock Alerts Preview */}
-        <div className="p-5 bg-white dark:bg-[#141A24] rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+        <div className="p-5 bg-white rounded-2xl border border-gray-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-500" />
-              <h2 className="text-base font-bold text-gray-900 dark:text-white">
+              <h2 className="text-base font-bold text-gray-900 ">
                 Low Stock & Restock Warnings
               </h2>
             </div>
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
             </Link>
           </div>
 
-          <div className="divide-y divide-gray-100 dark:divide-gray-800/80">
+          <div className="divide-y divide-gray-100 ">
             {lowStockPreview.map((prod) => (
               <div key={prod.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -240,14 +240,14 @@ const AdminDashboard = () => {
                     className="w-9 h-9 rounded-lg object-cover bg-gray-100 shrink-0"
                   />
                   <div className="min-w-0 truncate">
-                    <p className="font-semibold text-gray-900 dark:text-white truncate">
+                    <p className="font-semibold text-gray-900 truncate">
                       {prod.name}
                     </p>
                     <p className="text-xs text-gray-400">{prod.brand} • ৳{prod.price.toLocaleString()}</p>
                   </div>
                 </div>
 
-                <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50">
+                <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200/50">
                   {prod.stockQuantity} in stock
                 </span>
               </div>
@@ -257,13 +257,13 @@ const AdminDashboard = () => {
       </div>
 
       {/* Operations Notice Card */}
-      <div className="w-full rounded-2xl p-5 bg-primary-light/60 dark:bg-primary/10 border border-primary/20 space-y-2">
+      <div className="w-full rounded-2xl p-5 bg-primary-light/60 border border-primary/20 space-y-2">
         <h2 className="text-primary font-semibold text-base sm:text-lg flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-primary shrink-0" />
           Daily Order & Fulfillment Notice
         </h2>
 
-        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <p className="text-sm text-gray-700 leading-relaxed">
           Pending orders received before 2:00 PM must be packed and assigned for courier delivery today.
           Stock updates made in the inventory manager immediately synchronize with the customer storefront.
         </p>
