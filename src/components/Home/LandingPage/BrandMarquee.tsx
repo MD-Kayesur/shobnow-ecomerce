@@ -2,17 +2,22 @@ import React from "react";
 import Marquee from "react-fast-marquee";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-
-import { BRAND_MARQUEE_ITEMS } from "@/data/shopData";
 import { useGetStoreFilterOptionsQuery } from "@/redux/features/storefront/storefrontApi";
 import { getImageUrl } from "@/utils/imageUrl";
 
 export const BrandMarquee: React.FC = () => {
-  const { data } = useGetStoreFilterOptionsQuery();
+  const { data, isLoading } = useGetStoreFilterOptionsQuery();
   const apiBrands = data?.data?.brands || [];
-  const brands = apiBrands.length
-    ? apiBrands.map((brand) => ({ ...brand, logo: getImageUrl(brand.logo) }))
-    : BRAND_MARQUEE_ITEMS;
+
+  if (!isLoading && apiBrands.length === 0) {
+    return (
+      <section className="relative w-full bg-[#FFF9FB] dark:bg-[#090D14] py-8 text-center select-none border-y border-[#F8E8EF] dark:border-gray-800/80">
+        <p className="text-gray-400 dark:text-gray-500 font-inter text-sm font-medium">
+          No brands available
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="relative w-full bg-[#FFF9FB] dark:bg-[#090D14] py-6 sm:py-8 md:py-9 overflow-hidden select-none transition-colors duration-200 border-y border-[#F8E8EF] dark:border-gray-800/80">
@@ -24,8 +29,8 @@ export const BrandMarquee: React.FC = () => {
 
       {/* 100% Full Width Edge-to-Edge Container with Larger Brand Cards */}
       <div className="w-full relative py-1">
-        <Marquee speed={36} pauseOnHover={true} gradient={false} autoFill={brands.length >= 4}>
-          {brands.map((brand) => (
+        <Marquee speed={36} pauseOnHover={true} gradient={false} autoFill={apiBrands.length >= 4}>
+          {apiBrands.map((brand) => (
             <Link
               key={brand.id}
               to={`/brands?brand=${brand.slug}`}
@@ -39,13 +44,15 @@ export const BrandMarquee: React.FC = () => {
             >
               {brand.logo ? (
                 <img
-                  src={brand.logo}
+                  src={getImageUrl(brand.logo)}
                   alt={brand.name}
                   className="max-h-full max-w-[85%] object-contain opacity-85 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 filter drop-shadow-2xs"
                   loading="lazy"
                 />
               ) : (
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{brand.name}</span>
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
+                  {brand.name}
+                </span>
               )}
             </Link>
           ))}

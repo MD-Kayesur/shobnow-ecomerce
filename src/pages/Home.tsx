@@ -56,6 +56,8 @@ const Home = () => {
       {/* 5. Section 3: New Arrival 5-Col x 2-Row Product Grid + See All (Figma: top: 3052, height: 1171, white) */}
       <NewArrivalsSection
         onQuickView={(product) => setQuickViewProduct(product)}
+        wishlist={wishlist}
+        onToggleWishlist={handleToggleWishlist}
       />
 
       {/* 6. Section 4 Part A: August Beauty Deals Wide Editorial Banner (Figma: top: 4223, 1360x234, #FFF9FB) */}
@@ -64,6 +66,8 @@ const Home = () => {
       {/* 7. Section 4 Part B: Top Selling 5-Col x 2-Row Product Grid + See All (Figma: top: 4223 + 364) */}
       <TopSellingSection
         onQuickView={(product) => setQuickViewProduct(product)}
+        wishlist={wishlist}
+        onToggleWishlist={handleToggleWishlist}
       />
 
       {/* 8. Section 4 Part C: Dual Mid Promotional Banners: Pink Skincare & Yellow Prime Time (Figma: top: 4223 + 1425) */}
