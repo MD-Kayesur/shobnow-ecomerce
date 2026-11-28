@@ -128,30 +128,27 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* 2. First Secondary Banner (~35% width) */}
-          <div className="lg:col-span-4 group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-[380px] sm:h-[440px] lg:h-[480px] bg-gradient-to-b from-[#13072B] via-[#1E093D] to-[#2E0B5B] flex flex-col justify-between p-6 sm:p-7 text-white">
+          <div className="lg:col-span-4 group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-[380px] sm:h-[440px] lg:h-[480px] bg-transparent p-6 sm:p-7">
             {secBanner1 ? (
-              <Link to={secBanner1.targetUrl || "/shop"} className="block w-full h-full flex flex-col justify-between">
-                {/* Top Text Content */}
-                <div className="relative z-10 text-center flex flex-col items-center">
+              <Link to={secBanner1.targetUrl || "/shop"} aria-label={secBanner1.title || "Shop promotion"} className="flex h-full w-full flex-col justify-between">
+                <div className="relative z-10 flex flex-col items-center text-center">
                   {secBanner1.title && (
-                    <span className="text-xs sm:text-sm font-semibold tracking-wide text-white/90">
+                    <span className="text-xs font-semibold tracking-wide text-gray-900 sm:text-sm">
                       {secBanner1.title}
                     </span>
                   )}
                   {secBanner1.subtitle && (
-                    <div className="inline-block mt-2 px-3.5 py-0.5 rounded-full text-[11px] font-bold bg-[#381368] text-[#E0C6FF] border border-[#6B2BB8] shadow-sm">
+                    <div className="mt-1 text-[11px] font-medium text-gray-600 sm:text-xs">
                       {secBanner1.subtitle}
                     </div>
                   )}
                 </div>
-
-                {/* Bottom Visual Shot */}
                 {secBanner1.image && (
-                  <div className="relative z-10 w-full flex-1 min-h-[220px] rounded-2xl overflow-hidden mt-3">
+                  <div className="relative z-10 mt-3 min-h-[220px] w-full flex-1 overflow-hidden rounded-2xl">
                     <img
                       src={getImageUrl(secBanner1.image)}
                       alt={secBanner1.title || "Banner"}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                      className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                     />
                   </div>
                 )}

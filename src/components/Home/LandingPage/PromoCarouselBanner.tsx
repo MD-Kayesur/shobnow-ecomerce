@@ -39,6 +39,11 @@ export default function PromoCarouselBanner() {
               className="h-full w-full object-cover object-center transition-opacity duration-300"
               loading="lazy"
             />
+            <div className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-4 text-center ${banner.position === 1 ? "text-white" : "text-[#171b4b]"}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-[.18em] sm:text-xs ${banner.position === 1 ? "text-pink-100" : "text-primary"}`}>Shop Now Studio</span>
+              {banner.title && <span className="mt-1 text-base font-extrabold leading-tight drop-shadow-sm sm:text-2xl lg:text-3xl">{banner.title}</span>}
+              {banner.subtitle && <span className="mt-1 max-w-[90%] text-[11px] font-medium leading-snug drop-shadow-sm sm:text-sm lg:text-base">{banner.subtitle}</span>}
+            </div>
           </Link>
           {banners.length > 1 && (
             <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2" role="tablist" aria-label="Choose promotion">
