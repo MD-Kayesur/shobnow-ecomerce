@@ -5,6 +5,7 @@ export { default as UserOrdersPage } from "./pages/UserOrdersPage";
 export { default as UserWishlistPage } from "./pages/UserWishlistPage";
 export { default as UserProfilePage } from "./pages/UserProfilePage";
 export { default as UserPurchaseHistoryPage } from "./pages/UserPurchaseHistoryPage";
+export { default as UserAiLooksPage } from "./pages/UserAiLooksPage";
 
 export { default as UserSidebar } from "./components/UserSidebar";
 export { default as UserDashboardNavbar } from "./components/UserDashboardNavbar";

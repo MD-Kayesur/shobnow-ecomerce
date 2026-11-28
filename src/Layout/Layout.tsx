@@ -1,6 +1,7 @@
 import Footer from "@/components/Home/Shared/Footer";
 import NavBar from "@/components/Home/Shared/NavBar";
 import CartDrawer from "@/components/Cart/CartDrawer";
+import FloatingAssistant from "@/components/Assistant/FloatingAssistant";
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
@@ -22,6 +23,7 @@ const Layout: React.FC = () => {
     "/verify-code",
     "/verify-otp",
     "/reset-password",
+    "/assistant",
   ];
 
   const normalizedPath = location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
@@ -45,6 +47,7 @@ const Layout: React.FC = () => {
       </main>
       <Footer />
       <CartDrawer />
+      <FloatingAssistant />
     </div>
   );
 };

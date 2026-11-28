@@ -22,6 +22,7 @@ import Terms from "@/pages/Terms";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import RefundPolicy from "@/pages/RefundPolicy";
 import DeliveryPolicy from "@/pages/DeliveryPolicy";
+import Assistant from "@/pages/Assistant";
 
 import {
   AdminLayout,
@@ -45,6 +46,7 @@ import {
   UserWishlistPage,
   UserProfilePage,
   UserPurchaseHistoryPage,
+  UserAiLooksPage,
 } from "@/UserDashboard";
 
 const routes = createBrowserRouter([
@@ -59,6 +61,10 @@ const routes = createBrowserRouter([
       {
         path: "/shop",
         element: <Shop />,
+      },
+      {
+        path: "/assistant",
+        element: <Assistant />,
       },
       {
         path: "/products",
@@ -198,6 +204,7 @@ const routes = createBrowserRouter([
       { path: "wishlist", element: <UserWishlistPage /> },
       { path: "profile", element: <UserProfilePage /> },
       { path: "history", element: <UserPurchaseHistoryPage /> },
+      { path: "ai-looks", element: <UserAiLooksPage /> },
     ],
   },
 

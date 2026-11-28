@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowRight, BadgeCheck, Check, ChevronDown, ChevronLeft, ChevronRight,
   CircleHelp, Clock3, Gift, Heart, Leaf, Minus, Plus, RotateCcw, ShieldCheck,
-  ShoppingBag, ShoppingCart, Star, Truck,
+  ShoppingBag, ShoppingCart, Sparkles, Star, Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { addToCart } from "@/redux/features/cart/cartSlice";
@@ -13,6 +13,7 @@ import {
   useGetWishlistQuery, useRemoveWishlistItemMutation,
 } from "@/redux/features/storefront/storefrontApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/redux-hook";
+import JewelryTryOnModal from "@/components/Product/JewelryTryOnModal";
 
 const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1").replace(/\/api\/v\d+\/?$/, "");
 const imageUrl = (url?: string | null) => !url ? "" : /^https?:\/\//i.test(url) ? url : `${apiOrigin}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -50,6 +51,7 @@ const ProductDetails = () => {
   const [reviewText, setReviewText] = useState("");
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedBundle, setSelectedBundle] = useState<string[]>([]);
+  const [showTryOn, setShowTryOn] = useState(false);
 
   const { data: wishlistResponse } = useGetWishlistQuery(undefined, { skip: !user });
   const [addWishlist, { isLoading: addingWishlist }] = useAddWishlistItemMutation();
@@ -73,6 +75,11 @@ const ProductDetails = () => {
   const stockCount = variant?.stockQuantity ?? product?.stock ?? 0;
   const discount = originalPrice > productPrice ? Math.round((1 - productPrice / originalPrice) * 100) : 0;
   const image = images[activeImage]?.src || "";
+  const supportedJewelryCategories = ["EARRING", "RING", "NECKLACE", "PENDANT", "BRACELET", "WATCH"];
+  const jewelryCategory = String(product?.jewelryDetails?.category || "").toUpperCase();
+  const hasApprovedTryOnAsset = !!product?.tryOnAssets?.some((asset) => !asset.variantId || asset.variantId === variant?.id);
+  const canTryOn = product?.productCategory === "JEWELRY" && supportedJewelryCategories.includes(jewelryCategory) && hasApprovedTryOnAsset;
+  const canConsult = product?.productCategory === "COSMETICS" && !!product.cosmeticDetails?.dataVerifiedAt;
   const details = product?.cosmeticDetails || {};
   const ingredients = product?.productIngredients || [];
   const compatibility = product?.skinCompatibility || [];
@@ -183,6 +190,8 @@ const ProductDetails = () => {
             <button onClick={() => { addProductToCart(product, quantity, true); toast.success("Added to your cart."); }} disabled={!inStock} className="inline-flex min-w-[175px] flex-1 items-center justify-center gap-2 rounded-full bg-[#e90068] px-5 py-3 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#c9005b] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0 disabled:hover:shadow-none sm:flex-none"><ShoppingCart size={19}/>Add to Cart</button>
             <button onClick={() => { if (!inStock) return; if (!user) { toast.info("Sign in to place your order."); navigate("/login", { state: { from: `/product/${product.slug}` } }); return; } addProductToCart(product, quantity, false); navigate("/checkout"); }} disabled={!inStock} className="inline-flex min-w-[145px] flex-1 items-center justify-center gap-2 rounded-full border border-[#e90068] bg-white px-5 py-3 text-sm font-bold text-[#c00759] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#fff0f7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 sm:flex-none"><ShoppingBag size={18}/>Buy Now</button>
           </div>
+          {canTryOn && <button type="button" onClick={() => setShowTryOn(true)} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-[#e90068] bg-gradient-to-r from-[#fff1f8] to-white px-5 py-3 text-sm font-extrabold text-[#c00759] transition-all hover:-translate-y-0.5 hover:bg-[#ffe5f1] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2"><Sparkles size={18}/>AI Try Now</button>}
+          {canConsult && <button type="button" onClick={() => navigate("/assistant", { state: { from: `/product/${product.slug}`, productName: product.name, initialPrompt: `Please explain the verified benefits, suitability, instructions, cautions, and limitations for ${product.name}. Do not promise treatment results.` } })} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-pink-200 bg-[#fff5fa] px-5 py-3 text-sm font-bold text-[#a20e4c] transition-colors hover:bg-[#ffe8f2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e72c7e]/40"><Sparkles size={17}/>AI Beauty Consultation</button>}
           <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-pink-100 bg-white p-4 text-xs sm:grid-cols-4"><div className="flex items-center gap-2"><ShieldCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>Secure checkout</span></div><div className="flex items-center gap-2"><Truck className="shrink-0 text-[#e72c7e]" size={20}/><span>Delivery at checkout</span></div><div className="flex items-center gap-2"><RotateCcw className="shrink-0 text-[#e72c7e]" size={20}/><span>See return policy</span></div><div className="flex items-center gap-2"><BadgeCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>{product.authenticityVerified ? "Authenticity verified" : "Product details provided"}</span></div></div>
         </div>
       </section>
@@ -243,6 +252,7 @@ const ProductDetails = () => {
         )}
       </div>
     </div>
+    {showTryOn && canTryOn && <JewelryTryOnModal product={product} variantId={variant?.id} variantName={variant?.variantName} price={productPrice} productImage={image} onClose={() => setShowTryOn(false)}/>}
   </main>;
 };
 

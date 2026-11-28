@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Store, ClipboardList, Wallet, Heart, Bell, UserRound, Settings, CircleHelp, LogOut, Gift } from "lucide-react";
+import { LayoutDashboard, Store, ClipboardList, Wallet, Heart, Bell, UserRound, Settings, CircleHelp, LogOut, Gift, Sparkles } from "lucide-react";
 import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import { logOut } from "@/redux/features/auth/authSlice";
 import { useAppDispatch } from "@/redux/hooks/redux-hook";
@@ -10,6 +10,7 @@ const items = [
   { label: "My Orders", href: "/user-dashboard/orders", icon: ClipboardList },
   { label: "Wallet", href: "/user-dashboard/profile", icon: Wallet },
   { label: "Favorites", href: "/user-dashboard/wishlist", icon: Heart },
+  { label: "My AI Looks", href: "/user-dashboard/ai-looks", icon: Sparkles },
   { label: "Notifications", href: "/user-dashboard/orders", icon: Bell },
   { label: "Profile", href: "/user-dashboard/profile", icon: UserRound },
   { label: "Settings", href: "/user-dashboard/profile", icon: Settings },

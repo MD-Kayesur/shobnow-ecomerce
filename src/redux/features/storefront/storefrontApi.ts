@@ -19,6 +19,7 @@ export interface StoreProduct {
   cosmeticDetails?: Record<string, unknown> | null; productIngredients?: Array<Record<string, unknown>>;
   skinCompatibility?: Array<Record<string, unknown>>; concernCompatibility?: Array<Record<string, unknown>>; contraindications?: Array<Record<string, unknown>>;
   jewelryDetails?: Record<string, unknown> | null; jewelryMeasurements?: Array<Record<string, unknown>>; jewelrySizeOptions?: Array<Record<string, unknown>>;
+  tryOnAssets?: Array<{ id: string; variantId?: string | null }>;
   jewelryMaterials?: Array<Record<string, unknown>>; gemstones?: Array<Record<string, unknown>>;
   reviewSummary: { averageRating: number; reviewCount: number; distribution?: Record<string, number> };
 }
@@ -79,7 +80,25 @@ export const storefrontApi = baseApi.injectEndpoints({
     validateCoupon: build.mutation<Envelope<CouponValidation>, { code: string; subtotal: number }>({
       query: (body) => ({ url: "/coupons/validate", method: "POST", body }),
     }),
+    startJewelryTryOn: build.mutation<Envelope<{ sessionId: string; status: string; statusUrl: string }>, FormData>({
+      query: (body) => ({ url: "/ai/jewelry/try-on", method: "POST", body }),
+    }),
+    getJewelryTryOn: build.query<Envelope<{ id: string; status: string; errorMessage?: string | null; images: Array<{ id: string; url: string }> }>, string>({
+      query: (sessionId) => `/ai/jewelry/try-on/${sessionId}`,
+    }),
+    deleteJewelryTryOn: build.mutation<Envelope<null>, string>({
+      query: (sessionId) => ({ url: `/ai/jewelry/try-on/${sessionId}`, method: "DELETE" }),
+    }),
+    saveAiLook: build.mutation<Envelope<{ id: string }>, { generatedImageId: string; title?: string }>({
+      query: (body) => ({ url: "/ai/saved-looks", method: "POST", body }), invalidatesTags: ["SavedLooks"],
+    }),
+    getAiLooks: build.query<Envelope<Array<{ id: string; title?: string; createdAt: string; products: Array<{ id: string; name: string; slug: string }>; imageUrl: string | null }>>, void>({
+      query: () => "/ai/saved-looks?limit=50", providesTags: ["SavedLooks"],
+    }),
+    deleteAiLook: build.mutation<Envelope<null>, string>({
+      query: (id) => ({ url: `/ai/saved-looks/${id}`, method: "DELETE" }), invalidatesTags: ["SavedLooks"],
+    }),
   }),
 });
 
-export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useValidateCouponMutation } = storefrontApi;
+export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation } = storefrontApi;
