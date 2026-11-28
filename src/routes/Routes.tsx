@@ -41,6 +41,8 @@ import {
   AiTryOnAdminPage,
 } from "@/AdminDashboard";
 import AddProductWizardPage from "@/AdminDashboard/pages/AddProductWizardPage";
+import SystemMaintenancePage from "@/AdminDashboard/pages/SystemMaintenancePage";
+import CouponManagementPage from "@/AdminDashboard/pages/CouponManagementPage";
 
 import {
   UserLayout,
@@ -255,6 +257,8 @@ const routes = createBrowserRouter([
       { path: "support", element: <SupportRequestsPage /> },
       { path: "ai-try-on", element: <AiTryOnAdminPage /> },
       { path: "settings", element: <SettingsPage /> },
+      { path: "system-maintenance", element: <SystemMaintenancePage /> },
+      { path: "coupons", element: <CouponManagementPage /> },
       { path: "audit-log", element: <SettingsPage /> },
     ],
   },

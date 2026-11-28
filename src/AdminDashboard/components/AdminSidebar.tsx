@@ -18,6 +18,8 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  Wrench,
+  BadgePercent,
 } from "lucide-react";
 import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import { logOut } from "@/redux/features/auth/authSlice";
@@ -95,9 +97,19 @@ const defaultSidebarItems: SidebarItem[] = [
     href: "/admin-dashboard/newsletter",
   },
   {
+    icon: BadgePercent,
+    label: "Coupons",
+    href: "/admin-dashboard/coupons",
+  },
+  {
     icon: Settings,
     label: "Settings",
     href: "/admin-dashboard/settings",
+  },
+  {
+    icon: Wrench,
+    label: "System Maintenance",
+    href: "/admin-dashboard/system-maintenance",
   },
 ];
 

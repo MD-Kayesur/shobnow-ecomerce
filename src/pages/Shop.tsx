@@ -8,38 +8,13 @@ import {
 } from "@/data/shopData";
 import FigmaShopSidebar from "@/components/Shop/FigmaShopSidebar";
 import FigmaShopProductCard from "@/components/Shop/FigmaShopProductCard";
+import { toShopCardProduct } from "@/components/Shop/shopProductCardMapper";
 import ProductQuickViewModal from "@/components/Shop/ProductQuickViewModal";
 import NewsletterVIP from "@/components/Home/LandingPage/NewsletterVIP";
 import { ChevronLeft, ChevronRight, PackageSearch, SlidersHorizontal, Grid2X2, List, Star, Truck, Leaf, Gem, Gift } from "lucide-react";
 import { toast } from "sonner";
-import { useAddWishlistItemMutation, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetWishlistQuery, useRemoveWishlistItemMutation, type StoreProduct } from "@/redux/features/storefront/storefrontApi";
+import { useAddWishlistItemMutation, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetWishlistQuery, useRemoveWishlistItemMutation } from "@/redux/features/storefront/storefrontApi";
 import { useAppSelector } from "@/redux/hooks/redux-hook";
-
-const mediaUrl = (value?: string | null) => {
-  if (!value) return "";
-  if (/^https?:\/\//i.test(value)) return value;
-  const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1").replace(/\/api\/v\d+\/?$/, "");
-  return `${apiOrigin}${value.startsWith("/") ? "" : "/"}${value}`;
-};
-
-const toCardProduct = (item: StoreProduct): Product => {
-  const regular = Number(item.price);
-  const effectivePrice = Number(item.salePrice ?? item.price);
-  const gallery = item.media || [];
-  const mainMedia = gallery.find((media) => media.isPrimary) || gallery[0];
-  const image = mediaUrl(mainMedia?.imageUrl);
-  const stockQuantity = Math.max(item.stock || 0, ...item.variants.map((variant) => variant.stockQuantity || 0));
-  return {
-    id: item.id, name: item.name, slug: item.slug, brand: item.brand?.name || "Shop Now",
-    category: item.category?.slug || "", subcategory: item.subCategory?.slug || "", price: effectivePrice,
-    ...(effectivePrice < regular ? { originalPrice: regular, discountPercent: Math.round((1 - effectivePrice / regular) * 100) } : {}),
-    rating: item.reviewSummary?.averageRating || 0, reviewsCount: item.reviewSummary?.reviewCount || 0,
-    inStock: stockQuantity > 0, stockQuantity, image, hoverImage: mediaUrl(gallery.find((media) => media.id !== mainMedia?.id)?.imageUrl),
-    description: item.shortDescription || item.description || "", volume: item.variants.find((variant) => variant.isDefault)?.variantName || "",
-    isFeatured: item.displayType === "FEATURED", isNewArrival: item.displayType === "NEW_ARRIVAL", sku: item.variants[0]?.sku || undefined,
-    productType: item.productType, galleryImages: gallery.map((media) => mediaUrl(media.imageUrl)).filter(Boolean),
-  };
-};
 
 export const Shop: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -113,7 +88,7 @@ export const Shop: React.FC = () => {
     sort: filters.sortBy,
   };
   const { data: productResponse, isLoading, isFetching, isError, refetch } = useGetStoreProductsQuery(listQuery);
-  const paginatedProducts = (productResponse?.data || []).map(toCardProduct);
+  const paginatedProducts = (productResponse?.data || []).map(toShopCardProduct);
   const totalItems = productResponse?.meta?.total ?? 0;
   const totalPages = Math.max(1, productResponse?.meta?.totalPages ?? 1);
   const categoryShortcut = (preferred: RegExp, fallback?: RegExp) => {

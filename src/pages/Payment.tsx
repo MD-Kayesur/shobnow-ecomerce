@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
@@ -29,7 +29,7 @@ import {
 } from "@/redux/features/cart/cartSlice";
 import type { CartItem } from "@/redux/features/cart/cartSlice";
 import { toast } from "sonner";
-import { useCreateOrderMutation, useValidateCouponMutation } from "@/redux/features/storefront/storefrontApi";
+import { SavedAddress, useCreateOrderMutation, useGetDeliveryConfigQuery, useGetSavedAddressesQuery, useSaveSavedAddressMutation, useValidateCouponMutation } from "@/redux/features/storefront/storefrontApi";
 import checkoutBeautyCluster from "@/assets/banners/checkout-beauty-cluster.png";
 import orderConfirmationIllustration from "@/assets/orders/order-confirmation-illustration.png";
 
@@ -41,7 +41,8 @@ export const Payment: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const buyNowItem = (location.state as { buyNowItem?: CartItem } | null)?.buyNowItem;
+  const checkoutState = location.state as { buyNowItem?: CartItem; deliveryArea?: "inside" | "outside" } | null;
+  const buyNowItem = checkoutState?.buyNowItem;
   const cartItems = useAppSelector(selectCartItems);
   const checkoutItems = buyNowItem ? [buyNowItem] : cartItems;
   const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -52,12 +53,15 @@ export const Payment: React.FC = () => {
   const discount = buyNowItem ? buyNowDiscount : cartDiscount;
   const appliedCode = buyNowItem ? buyNowCouponCode : cartAppliedCode;
   const user = useAppSelector((state) => state.auth.user);
+  const { data: deliveryResponse } = useGetDeliveryConfigQuery();
   const [createOrder] = useCreateOrderMutation();
+  const { data: savedAddressResponse, isLoading: isLoadingSavedAddresses } = useGetSavedAddressesQuery(undefined, { skip: !user });
+  const [saveSavedAddress] = useSaveSavedAddressMutation();
   const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
-  const addressStorageKey = `shopnow_addresses_${user?.id || "guest"}`;
-  const [savedAddresses, setSavedAddresses] = useState<Array<{ label: string; address: string; city: string; area: string }>>([]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddress, setSelectedAddress] = useState("new");
   const [saveAddress, setSaveAddress] = useState(true);
+  const legacyMigrationDone = useRef(false);
   const [paymentChoice, setPaymentChoice] = useState<"cod" | "wallet" | "phone">("cod");
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -73,7 +77,10 @@ export const Payment: React.FC = () => {
     orderNote: "",
   });
 
-  const [deliveryArea, setDeliveryArea] = useState<"inside" | "outside">("inside");
+  const [deliveryArea, setDeliveryArea] = useState<"inside" | "outside">(() => {
+    if (checkoutState?.deliveryArea) return checkoutState.deliveryArea;
+    return localStorage.getItem("shopnow_delivery_area") === "outside" ? "outside" : "inside";
+  });
   const [agreeTerms, setAgreeTerms] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -85,17 +92,46 @@ export const Payment: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     setFormData((previous) => ({ ...previous, fullName: previous.fullName || user.name, phone: previous.phone || user.phone || "", email: previous.email || user.email }));
-    try {
-      const stored = JSON.parse(localStorage.getItem(addressStorageKey) || "[]") as typeof savedAddresses;
-      const addresses = stored.length ? stored : user.address_Pickup_Location ? [{ label: "Home", address: user.address_Pickup_Location, city: "Dhaka", area: "" }] : [];
-      setSavedAddresses(addresses);
-      if (addresses.length) { setSelectedAddress("0"); setFormData((previous) => ({ ...previous, address: addresses[0].address, city: addresses[0].city })); }
-    } catch { setSavedAddresses([]); }
-  }, [user, addressStorageKey]);
+  }, [user]);
 
-  const freeShippingThreshold = 1000;
+  useEffect(() => {
+    setSavedAddresses([]);
+    setSelectedAddress("new");
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedAddresses([]);
+      setSelectedAddress("new");
+      return;
+    }
+    if (isLoadingSavedAddresses) return;
+    const addresses = savedAddressResponse?.data ?? [];
+    if (addresses.length) {
+      setSavedAddresses(addresses);
+      const defaultIndex = Math.max(0, addresses.findIndex((address) => address.isDefault));
+      const primary = addresses[defaultIndex];
+      setSelectedAddress(String(defaultIndex));
+      setFormData((previous) => ({ ...previous, address: primary.addressLine, city: primary.city, fullName: primary.recipientName || previous.fullName, phone: primary.recipientPhone || previous.phone }));
+      if (checkoutState?.deliveryArea === undefined) setDeliveryArea(primary.deliveryArea);
+      return;
+    }
+    setSavedAddresses([]);
+    setSelectedAddress("new");
+    if (legacyMigrationDone.current) return;
+    legacyMigrationDone.current = true;
+    try {
+      const legacy = JSON.parse(localStorage.getItem(`shopnow_addresses_${user.id}`) || "[]") as Array<{ label?: string; address?: string; city?: string; area?: string }>;
+      if (!legacy.length) return;
+      void Promise.all(legacy.filter((entry) => entry.address && entry.city).map((entry, index) => saveSavedAddress({
+        label: entry.label || "Home", addressLine: entry.address!, city: entry.city!, deliveryArea: entry.area === "outside" ? "outside" : "inside", isDefault: index === 0,
+      }).unwrap())).then(() => localStorage.removeItem(`shopnow_addresses_${user.id}`)).catch(() => undefined);
+    } catch { /* Ignore malformed legacy browser data. */ }
+  }, [user, isLoadingSavedAddresses, savedAddressResponse, saveSavedAddress, checkoutState?.deliveryArea]);
+
+  const freeShippingThreshold = deliveryResponse?.data.freeDeliveryThreshold ?? 1000;
   const isFreeShipping = subtotal >= freeShippingThreshold;
-  const shippingFee = isFreeShipping ? 0 : deliveryArea === "inside" ? 60 : 120;
+  const shippingFee = isFreeShipping ? 0 : deliveryResponse?.data.deliveryFees[deliveryArea] ?? (deliveryArea === "inside" ? 60 : 120);
   const grandTotal = Math.max(0, subtotal - discount + shippingFee);
 
   useEffect(() => {
@@ -136,7 +172,12 @@ export const Payment: React.FC = () => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const chooseDeliveryArea = (area: "inside" | "outside") => {
+    setDeliveryArea(area);
+    localStorage.setItem("shopnow_delivery_area", area);
+  };
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.fullName.trim() || !formData.phone.trim() || !formData.address.trim()) {
@@ -152,22 +193,24 @@ export const Payment: React.FC = () => {
     }
 
     const address = selectedAddress !== "new" ? savedAddresses[Number(selectedAddress)] : null;
-    if (address) setFormData((previous) => ({ ...previous, address: address.address, city: address.city }));
-    const orderAddress = address?.address || formData.address.trim();
+    if (address) setFormData((previous) => ({ ...previous, address: address.addressLine, city: address.city }));
+    const orderAddress = address?.addressLine || formData.address.trim();
     const orderCity = address?.city || formData.city;
-    if (saveAddress && selectedAddress === "new") {
-      const nextAddresses = [...savedAddresses, { label: "Home", address: orderAddress, city: orderCity, area: deliveryArea }];
-      setSavedAddresses(nextAddresses);
-      localStorage.setItem(addressStorageKey, JSON.stringify(nextAddresses));
-    }
     setIsSubmitting(true);
-    void createOrder({
-      items: checkoutItems.map((item) => ({ productId: String(item.id), ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
-      recipientName: formData.fullName.trim(), recipientPhone: formData.phone.trim(), recipientEmail: formData.email.trim() || undefined,
-      addressLine: orderAddress, city: orderCity, area: address?.area || deliveryArea, customerNote: formData.orderNote.trim() || undefined,
-      couponCode: appliedCode || undefined,
-      paymentMethod: "CALL_CONFIRMATION",
-    }).unwrap().then((response) => {
+    try {
+      if (user && saveAddress && selectedAddress === "new") {
+        await saveSavedAddress({
+          label: "Home", recipientName: formData.fullName.trim(), recipientPhone: formData.phone.trim(),
+          addressLine: orderAddress, city: orderCity, deliveryArea, isDefault: savedAddresses.length === 0,
+        }).unwrap();
+      }
+      const response = await createOrder({
+        items: checkoutItems.map((item) => ({ productId: String(item.id), ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
+        recipientName: formData.fullName.trim(), recipientPhone: formData.phone.trim(), recipientEmail: formData.email.trim() || undefined,
+        addressLine: orderAddress, city: orderCity, area: deliveryArea, customerNote: formData.orderNote.trim() || undefined,
+        couponCode: appliedCode || undefined,
+        paymentMethod: "CALL_CONFIRMATION",
+      }).unwrap();
       const orderId = response.data.orderNumber;
       setGeneratedOrderId(orderId);
       setGeneratedOrderTotal(Number(response.data.total));
@@ -176,12 +219,12 @@ export const Payment: React.FC = () => {
       setOrderSuccess(true);
       if (!buyNowItem) dispatch(clearCart());
       toast.success("Order submitted. Our team will call you to confirm.");
-    }).catch((error) => {
+    } catch (error) {
       const message = (error as { data?: { message?: string | string[] } })?.data?.message;
       toast.error(Array.isArray(message) ? message.join(" ") : message || "Could not place your order. Please try again.");
-    }).finally(() => {
+    } finally {
       setIsSubmitting(false);
-    });
+    }
   };
 
   return (
@@ -247,9 +290,12 @@ export const Payment: React.FC = () => {
                   <select id="saved-address" value={selectedAddress} onChange={(event) => {
                     setSelectedAddress(event.target.value);
                     const selected = savedAddresses[Number(event.target.value)];
-                    if (selected) setFormData((previous) => ({ ...previous, address: selected.address, city: selected.city }));
+                    if (selected) {
+                      setFormData((previous) => ({ ...previous, address: selected.addressLine, city: selected.city, fullName: selected.recipientName || previous.fullName, phone: selected.recipientPhone || previous.phone }));
+                      chooseDeliveryArea(selected.deliveryArea);
+                    }
                   }} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800">
-                    {savedAddresses.map((address, index) => <option key={`${address.label}-${index}`} value={index}>{address.label}: {address.address}, {address.city}</option>)}
+                    {savedAddresses.map((address, index) => <option key={address.id} value={index}>{address.label}: {address.addressLine}, {address.city}</option>)}
                     <option value="new">Use a different address</option>
                   </select>
                 </div>}
@@ -312,7 +358,7 @@ export const Payment: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setDeliveryArea("inside");
+                          chooseDeliveryArea("inside");
                           setFormData((prev) => ({ ...prev, city: "Dhaka" }));
                         }}
                         className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
@@ -321,12 +367,12 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Inside Dhaka ({formatTaka(60)})
+                        Inside Dhaka ({formatTaka(deliveryResponse?.data.deliveryFees.inside ?? 60)})
                       </button>
                       <button
                         type="button"
                         onClick={() => {
-                          setDeliveryArea("outside");
+                          chooseDeliveryArea("outside");
                           setFormData((prev) => ({ ...prev, city: "Outside Dhaka" }));
                         }}
                         className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
@@ -335,7 +381,7 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Outside Dhaka ({formatTaka(120)})
+                        Outside Dhaka ({formatTaka(deliveryResponse?.data.deliveryFees.outside ?? 120)})
                       </button>
                     </div>
                   </div>
@@ -407,7 +453,7 @@ export const Payment: React.FC = () => {
                   })}
                 </div>
                 <div className="mt-5 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
-                  {selectedAddress === "new" && <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-[#ec2680]"/>Save this address as Home for next time</label>}
+                  {selectedAddress === "new" && (user ? <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-[#ec2680]"/>Save this address as Home for next time</label> : <p className="text-xs text-slate-500">Sign in to save this address to your profile for next time.</p>)}
                   <p className="flex items-center gap-2 text-xs text-slate-500 sm:ml-auto"><Phone size={14} className="text-[#d41465]"/>Order confirmation call: <strong className="text-slate-800">{formData.phone || "add your phone number"}</strong></p>
                 </div>
                 <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-600">

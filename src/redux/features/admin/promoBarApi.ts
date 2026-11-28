@@ -17,7 +17,11 @@ export const promoBarAdminApi = baseApi.injectEndpoints({
       query: (body) => ({ url: "/admin/promo-bar", method: "PUT", body }),
       invalidatesTags: ["PromoBar"],
     }),
+    deleteAdminPromoBar: build.mutation<{ success: boolean; data: null }, void>({
+      query: () => ({ url: "/admin/promo-bar", method: "DELETE" }),
+      invalidatesTags: ["PromoBar"],
+    }),
   }),
 });
 
-export const { useGetAdminPromoBarQuery, useSaveAdminPromoBarMutation } = promoBarAdminApi;
+export const { useGetAdminPromoBarQuery, useSaveAdminPromoBarMutation, useDeleteAdminPromoBarMutation } = promoBarAdminApi;

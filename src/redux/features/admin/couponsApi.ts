@@ -40,8 +40,19 @@ export const couponsApi = baseApi.injectEndpoints({
       query: () => "/admin/coupons",
       providesTags: ["Coupons"],
     }),
+    generateAdminCouponCode: build.mutation<ApiResponse<{ code: string }>, void>({
+      query: () => ({ url: "/admin/coupons/generate-code", method: "POST" }),
+    }),
     createAdminCoupon: build.mutation<ApiResponse<AdminCoupon>, CreateCouponInput>({
       query: (body) => ({ url: "/admin/coupons", method: "POST", body }),
+      invalidatesTags: ["Coupons"],
+    }),
+    updateAdminCoupon: build.mutation<ApiResponse<AdminCoupon>, { id: string; coupon: CreateCouponInput }>({
+      query: ({ id, coupon }) => ({ url: `/admin/coupons/${id}`, method: "PUT", body: coupon }),
+      invalidatesTags: ["Coupons"],
+    }),
+    deleteAdminCoupon: build.mutation<ApiResponse<{ id: string }>, string>({
+      query: (id) => ({ url: `/admin/coupons/${id}`, method: "DELETE" }),
       invalidatesTags: ["Coupons"],
     }),
     updateAdminCouponStatus: build.mutation<ApiResponse<AdminCoupon>, { id: string; isActive: boolean }>({
@@ -51,4 +62,4 @@ export const couponsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetAdminCouponsQuery, useCreateAdminCouponMutation, useUpdateAdminCouponStatusMutation } = couponsApi;
+export const { useGetAdminCouponsQuery, useGenerateAdminCouponCodeMutation, useCreateAdminCouponMutation, useUpdateAdminCouponMutation, useDeleteAdminCouponMutation, useUpdateAdminCouponStatusMutation } = couponsApi;

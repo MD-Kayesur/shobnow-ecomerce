@@ -36,7 +36,7 @@ const NavBar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const { data: promoResponse } = useGetPromoBarQuery();
+  const { data: promoResponse } = useGetPromoBarQuery(undefined, { pollingInterval: 30_000 });
   const promoBar = promoResponse?.data;
   const [now, setNow] = useState(() => Date.now());
 
@@ -103,15 +103,15 @@ const NavBar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white font-inter text-[#111827] shadow-[0_2px_12px_rgba(35,20,40,0.07)]">
-      <div className="min-h-[34px] bg-gradient-to-r from-[#f44b9a] via-[#d60060] to-[#970044] px-3 text-white sm:px-6">
+      {isPromoVisible && promoBar && <div className="min-h-[34px] bg-gradient-to-r from-[#f44b9a] via-[#d60060] to-[#970044] px-3 text-white sm:px-6">
         <div className="mx-auto flex min-h-[36px] max-w-[1440px] items-center justify-between gap-2 text-[10px] font-semibold sm:gap-3 sm:text-xs">
           <div className="flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap sm:gap-2">
             <Zap size={14} fill="currentColor" className="shrink-0 text-yellow-300" />
-            <span className="truncate">{promoBar?.headline || "Beauty Fest is Live"}</span>
+            <span className="truncate">{promoBar.headline}</span>
           </div>
           <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap sm:flex sm:gap-3">
-            <span className="h-3 w-px bg-white/60" /><span>{promoBar?.offerText || "Up to 40% OFF"}</span>
-            <span className="h-3 w-px bg-white/60" /><span>{promoBar?.deliveryText || "Free Delivery over ৳1,000"}</span>
+            {promoBar.offerText && <><span className="h-3 w-px bg-white/60" /><span>{promoBar.offerText}</span></>}
+            {promoBar.deliveryText && <><span className="h-3 w-px bg-white/60" /><span>{promoBar.deliveryText}</span></>}
           </div>
           {isPromoVisible && promoBar?.endsAt && secondsRemaining > 0 && <div className="ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap sm:ml-0 sm:gap-1.5">
             <span className="hidden opacity-90 sm:inline">Ends in:</span>
@@ -121,7 +121,7 @@ const NavBar: React.FC = () => {
             <span className="rounded-md bg-white/15 px-1.5 py-0.5 tabular-nums sm:px-2">{seconds}</span>
           </div>}
         </div>
-      </div>
+      </div>}
       <div className="border-b border-[#f3e8ee] bg-white">
         <div className="mx-auto flex min-h-[58px] max-w-[1440px] items-center gap-3 px-3 sm:gap-4 sm:px-6 lg:gap-5">
           <Link to="/" className="group flex shrink-0 items-center" aria-label="Shop Now home">

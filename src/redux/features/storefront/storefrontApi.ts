@@ -26,6 +26,11 @@ export interface StoreProduct {
 }
 export interface StoreReview { id: string; rating: number; title?: string | null; comment: string; isVerifiedPurchase: boolean; createdAt: string; user: { name?: string | null } }
 export interface PromoBar { headline: string; offerText: string | null; deliveryText: string | null; isActive: boolean; startsAt: string | null; endsAt: string | null }
+export interface DeliveryConfig { freeDeliveryThreshold: number; deliveryFees: { inside: number; outside: number } }
+export interface SavedAddress {
+  id: string; label: string; recipientName?: string | null; recipientPhone?: string | null;
+  addressLine: string; city: string; deliveryArea: "inside" | "outside"; isDefault: boolean;
+}
 export interface NewsletterSubscribeResponse { success: boolean; statusCode: number; message: string; data: null; timestamp?: string; path?: string }
 export interface ApiPage<T> { data: T[]; meta?: { page: number; limit: number; total: number; totalPages: number } }
 export interface StoreProductQuery { page?: number; limit?: number; search?: string; category?: string; subcategory?: string; brand?: string; minPrice?: number; maxPrice?: number; inStock?: boolean; onSale?: boolean; minRating?: number; sort?: string; productCategory?: string; jewelryCategory?: string; tryOnEligible?: boolean; productIds?: string }
@@ -53,6 +58,15 @@ export const storefrontApi = baseApi.injectEndpoints({
     }),
     getPromoBar: build.query<Envelope<PromoBar | null>, void>({
       query: () => "/promo-bar", providesTags: ["PromoBar"],
+    }),
+    getDeliveryConfig: build.query<Envelope<DeliveryConfig>, void>({
+      query: () => "/shipping/config",
+    }),
+    getSavedAddresses: build.query<Envelope<SavedAddress[]>, void>({
+      query: () => "/auth/me/addresses", providesTags: ["SavedAddresses"],
+    }),
+    saveSavedAddress: build.mutation<Envelope<SavedAddress>, Omit<SavedAddress, "id" | "isDefault"> & { isDefault?: boolean }>({
+      query: (body) => ({ url: "/auth/me/addresses", method: "PUT", body }), invalidatesTags: ["SavedAddresses"],
     }),
     getStoreFilterOptions: build.query<Envelope<{ categories: StoreCategory[]; brands: StoreBrand[]; priceRange: { min: number; max: number } }>, void>({
       query: () => "/products/filter-options", providesTags: ["Taxonomy"],
@@ -118,4 +132,4 @@ export const storefrontApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useGetMyOrdersQuery, useSubmitSupportRequestMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation, useSetAiLookFavoriteMutation } = storefrontApi;
+export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetDeliveryConfigQuery, useGetSavedAddressesQuery, useSaveSavedAddressMutation, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useGetMyOrdersQuery, useSubmitSupportRequestMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation, useSetAiLookFavoriteMutation } = storefrontApi;
