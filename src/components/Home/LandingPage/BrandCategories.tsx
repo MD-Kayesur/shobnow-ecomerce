@@ -6,6 +6,8 @@ import {
   ALL_FIGMA_CATEGORIES,
   FigmaCategoryItem as CategoryItem,
 } from "@/data/shopData";
+import { useGetStoreFilterOptionsQuery } from "@/redux/features/storefront/storefrontApi";
+import { getImageUrl } from "@/utils/imageUrl";
 
 export { FIGMA_CATEGORIES_ROW_1, FIGMA_CATEGORIES_ROW_2, ALL_FIGMA_CATEGORIES };
 export type { CategoryItem };
@@ -110,6 +112,22 @@ export default function BrandCategories({
   className = "",
 }: BrandCategoriesProps) {
   const displayTitle = title.replace(/&amp;/g, "&");
+  const { data } = useGetStoreFilterOptionsQuery();
+  const category = data?.data?.categories?.find((item) =>
+    item.name.toLowerCase() === displayTitle.toLowerCase() ||
+    displayTitle.toLowerCase().includes(item.name.toLowerCase()) ||
+    item.name.toLowerCase().includes(displayTitle.toLowerCase())
+  );
+  const apiItems: CategoryItem[] = (category?.subCategories || []).map((item, index) => ({
+    id: index + 1,
+    title: item.name,
+    slug: item.slug,
+    image: getImageUrl(item.image),
+    bgColor: ["#DCFCE7", "#FEE2E2", "#FEF3C7", "#E0E7FF", "#FCE7F3", "#EDE9FE"][index % 6],
+    link: `/shop?category=${category?.slug}&subcategory=${item.slug}`,
+  }));
+  const row1 = apiItems.length ? apiItems.slice(0, 6) : FIGMA_CATEGORIES_ROW_1;
+  const row2 = apiItems.length ? apiItems.slice(6, 12) : FIGMA_CATEGORIES_ROW_2;
 
   return (
     <section className={`w-full bg-[#FDFDFD] dark:bg-[#090D14] py-10 sm:py-14 md:py-18 transition-colors duration-200 ${className}`}>
@@ -123,14 +141,14 @@ export default function BrandCategories({
 
         {/* Row 1: 6 Columns on Laptops (lg:grid-cols-6), 3 on tablets (sm:grid-cols-3), 2 on mobile */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 mb-6 sm:mb-8 justify-items-center">
-          {FIGMA_CATEGORIES_ROW_1.map((item) => (
+          {row1.map((item) => (
             <FigmaCategoryCapsule key={item.id} item={item} />
           ))}
         </div>
 
         {/* Row 2: 6 Columns on Laptops (lg:grid-cols-6), 3 on tablets (sm:grid-cols-3), 2 on mobile */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-5 justify-items-center">
-          {FIGMA_CATEGORIES_ROW_2.map((item) => (
+          {row2.map((item) => (
             <FigmaCategoryCapsule key={item.id} item={item} />
           ))}
         </div>

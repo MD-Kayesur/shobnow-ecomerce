@@ -5,6 +5,7 @@ import { MOCK_PRODUCTS, Product } from "@/data/shopData";
 import { useAppDispatch } from "@/redux/hooks/redux-hook";
 import { addToCart } from "@/redux/features/cart/cartSlice";
 import { toast } from "sonner";
+import { useGetStoreProductsQuery, mapStoreProductToUi } from "@/redux/features/storefront/storefrontApi";
 
 interface ProductCardProps {
   product: Product;
@@ -109,7 +110,9 @@ export const FigmaProductCard: React.FC<ProductCardProps> = ({
 export const NewArrivalsSection: React.FC<{
   onQuickView?: (product: Product) => void;
 }> = ({ onQuickView }) => {
-  const newArrivals = MOCK_PRODUCTS.slice(0, 10);
+  const { data } = useGetStoreProductsQuery({ page: 1, limit: 10, sort: "newest" });
+  const apiProducts = data?.data?.map(mapStoreProductToUi) || [];
+  const newArrivals = apiProducts.length ? apiProducts : MOCK_PRODUCTS.slice(0, 10);
 
   return (
     <section className="w-full bg-white dark:bg-[#090D14] py-16 sm:py-20 md:py-24 transition-colors duration-200">

@@ -4,8 +4,16 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { BRAND_MARQUEE_ITEMS } from "@/data/shopData";
+import { useGetStoreFilterOptionsQuery } from "@/redux/features/storefront/storefrontApi";
+import { getImageUrl } from "@/utils/imageUrl";
 
 export const BrandMarquee: React.FC = () => {
+  const { data } = useGetStoreFilterOptionsQuery();
+  const apiBrands = data?.data?.brands || [];
+  const brands = apiBrands.length
+    ? apiBrands.map((brand) => ({ ...brand, logo: getImageUrl(brand.logo) }))
+    : BRAND_MARQUEE_ITEMS;
+
   return (
     <section className="relative w-full bg-[#FFF9FB] dark:bg-[#090D14] py-6 sm:py-8 md:py-9 overflow-hidden select-none transition-colors duration-200 border-y border-[#F8E8EF] dark:border-gray-800/80">
       {/* Subtle Soft Edge Left Fade */}
@@ -16,8 +24,8 @@ export const BrandMarquee: React.FC = () => {
 
       {/* 100% Full Width Edge-to-Edge Container with Larger Brand Cards */}
       <div className="w-full relative py-1">
-        <Marquee speed={36} pauseOnHover={true} gradient={false} autoFill={true}>
-          {BRAND_MARQUEE_ITEMS.map((brand) => (
+        <Marquee speed={36} pauseOnHover={true} gradient={false} autoFill={brands.length >= 4}>
+          {brands.map((brand) => (
             <Link
               key={brand.id}
               to={`/brands?brand=${brand.slug}`}
@@ -29,12 +37,16 @@ export const BrandMarquee: React.FC = () => {
               }}
               className="w-[145px] sm:w-[175px] md:w-[200px] lg:w-[220px] h-[66px] sm:h-[76px] md:h-[84px] px-4 sm:px-6 py-2.5 sm:py-3.5 mx-2.5 sm:mx-3.5 md:mx-4 bg-white dark:bg-[#111726] rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 shadow-xs hover:shadow-xl hover:border-[#A20E4C] dark:hover:border-[#E91E63] hover:-translate-y-1 active:scale-95 border border-gray-200/90 dark:border-gray-800 transition-all duration-300 cursor-pointer group"
             >
-              <img
-                src={brand.logo}
-                alt={brand.name}
-                className="max-h-full max-w-[85%] object-contain opacity-85 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 filter drop-shadow-2xs"
-                loading="lazy"
-              />
+              {brand.logo ? (
+                <img
+                  src={brand.logo}
+                  alt={brand.name}
+                  className="max-h-full max-w-[85%] object-contain opacity-85 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 filter drop-shadow-2xs"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{brand.name}</span>
+              )}
             </Link>
           ))}
         </Marquee>

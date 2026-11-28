@@ -2,11 +2,14 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { MOCK_PRODUCTS, Product } from "@/data/shopData";
 import { FigmaProductCard } from "./NewArrivalsSection";
+import { mapStoreProductToUi, useGetStoreProductsQuery } from "@/redux/features/storefront/storefrontApi";
 
 export const TopSellingSection: React.FC<{
   onQuickView?: (product: Product) => void;
 }> = ({ onQuickView }) => {
-  const topSelling = MOCK_PRODUCTS.slice(5, 15);
+  const { data } = useGetStoreProductsQuery({ page: 1, limit: 10, sort: "bestselling" });
+  const apiProducts = data?.data?.map(mapStoreProductToUi) || [];
+  const topSelling = apiProducts.length ? apiProducts : MOCK_PRODUCTS.slice(5, 15);
 
   return (
     <section className="w-full bg-[#FFF9FB] dark:bg-[#090D14] py-12 sm:py-16 transition-colors duration-200">

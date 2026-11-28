@@ -1,4 +1,6 @@
 import { baseApi } from "@/redux/hooks/baseApi";
+import { getImageUrl } from "@/utils/imageUrl";
+import { Product } from "@/data/shopData";
 
 export interface StoreCategory {
   id: string; name: string; slug: string; image?: string | null; _count: { products: number };
@@ -133,3 +135,37 @@ export const storefrontApi = baseApi.injectEndpoints({
 });
 
 export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetDeliveryConfigQuery, useGetSavedAddressesQuery, useSaveSavedAddressMutation, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useGetMyOrdersQuery, useSubmitSupportRequestMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation, useSetAiLookFavoriteMutation } = storefrontApi;
+
+export function mapStoreProductToUi(product: StoreProduct): Product {
+  const primaryMedia = product.media?.find((media) => media.isPrimary) || product.media?.[0];
+  const image = getImageUrl(primaryMedia?.imageUrl);
+  const price = Number(product.salePrice || product.price || 0);
+  const originalPrice = product.salePrice ? Number(product.price || 0) : undefined;
+  const discountPercent = originalPrice && originalPrice > price
+    ? Math.round(((originalPrice - price) / originalPrice) * 100)
+    : undefined;
+
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    brand: product.brand?.name || "Authentic",
+    category: product.category?.name || "General",
+    subcategory: product.subCategory?.name || "",
+    price,
+    originalPrice,
+    discountPercent,
+    rating: product.reviewSummary?.averageRating || 0,
+    reviewsCount: product.reviewSummary?.reviewCount || 0,
+    inStock: product.stock > 0 || product.variants?.some((variant) => variant.stockQuantity > 0) || false,
+    stockQuantity: product.stock,
+    image,
+    hoverImage: getImageUrl(product.media?.[1]?.imageUrl) || image,
+    description: product.shortDescription || product.description || "",
+    volume: product.variants?.[0]?.volume ? `${product.variants[0].volume}ml` : "Standard",
+    tags: product.metadata?.metaKeywords || [],
+    isFeatured: product.isFeatured,
+    isNewArrival: true,
+    productType: product.productType,
+  };
+}
