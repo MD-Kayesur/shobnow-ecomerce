@@ -128,17 +128,17 @@ export const Hero: React.FC = () => {
           </div>
 
           {/* 2. First Secondary Banner (~35% width) */}
-          <div className="lg:col-span-4 group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-[380px] sm:h-[440px] lg:h-[480px] bg-transparent p-6 sm:p-7">
+          <div className="lg:col-span-4 group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 h-[380px] sm:h-[440px] lg:h-[480px] bg-[#FFE3F2] p-6 sm:p-7">
             {secBanner1 ? (
               <Link to={secBanner1.targetUrl || "/shop"} aria-label={secBanner1.title || "Shop promotion"} className="flex h-full w-full flex-col justify-between">
                 <div className="relative z-10 flex flex-col items-center text-center">
                   {secBanner1.title && (
-                    <span className="text-xs font-semibold tracking-wide text-gray-900 sm:text-sm">
+                    <span className="text-xs font-semibold tracking-wide text-[#5B1738] sm:text-sm">
                       {secBanner1.title}
                     </span>
                   )}
                   {secBanner1.subtitle && (
-                    <div className="mt-1 text-[11px] font-medium text-gray-600 sm:text-xs">
+                    <div className="mt-1 text-[11px] font-medium text-[#80566B] sm:text-xs">
                       {secBanner1.subtitle}
                     </div>
                   )}
