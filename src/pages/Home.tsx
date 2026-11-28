@@ -3,7 +3,7 @@ import Hero from "@/components/Home/Hero/Hero";
 import BrandMarquee from "@/components/Home/LandingPage/BrandMarquee";
 import BrandCategories from "@/components/Home/LandingPage/BrandCategories";
 import NewArrivalsSection from "@/components/Home/LandingPage/NewArrivalsSection";
-import AugustBeautyBanner from "@/components/Home/LandingPage/AugustBeautyBanner";
+import PromoCarouselBanner from "@/components/Home/LandingPage/PromoCarouselBanner";
 import TopSellingSection from "@/components/Home/LandingPage/TopSellingSection";
 import DualPromoBanners from "@/components/Home/LandingPage/DualPromoBanners";
 import FeaturedProductsCarousel from "@/components/Home/LandingPage/FeaturedProductsCarousel";
@@ -60,8 +60,8 @@ const Home = () => {
         onToggleWishlist={handleToggleWishlist}
       />
 
-      {/* 6. Section 4 Part A: August Beauty Deals Wide Editorial Banner (Figma: top: 4223, 1360x234, #FFF9FB) */}
-      <AugustBeautyBanner />
+      {/* 6. Section 4 Part A: Independent Promotional Carousel */}
+      <PromoCarouselBanner />
 
       {/* 7. Section 4 Part B: Top Selling 5-Col x 2-Row Product Grid + See All (Figma: top: 4223 + 364) */}
       <TopSellingSection

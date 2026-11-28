@@ -43,6 +43,7 @@ import {
 import AddProductWizardPage from "@/AdminDashboard/pages/AddProductWizardPage";
 import SystemMaintenancePage from "@/AdminDashboard/pages/SystemMaintenancePage";
 import CouponManagementPage from "@/AdminDashboard/pages/CouponManagementPage";
+import PromoCarouselBannersPage from "@/AdminDashboard/pages/PromoCarouselBannersPage";
 
 import {
   UserLayout,
@@ -245,6 +246,7 @@ const routes = createBrowserRouter([
       { path: "orders", element: <OrdersPage /> },
       { path: "products", element: <ProductsPage /> },
       { path: "banners", element: <BannersPage /> },
+      { path: "promo-carousel", element: <PromoCarouselBannersPage /> },
       { path: "add-product", element: <AddProductWizardPage /> },
       { path: "inventory", element: <ProductsPage /> },
       { path: "categories", element: <CategoriesBrandsPage /> },

@@ -61,6 +61,11 @@ const defaultSidebarItems: SidebarItem[] = [
     href: "/admin-dashboard/banners",
   },
   {
+    icon: Images,
+    label: "Promo Carousel",
+    href: "/admin-dashboard/promo-carousel",
+  },
+  {
     icon: ShoppingBag,
     label: "Orders Management",
     href: "/admin-dashboard/orders",
