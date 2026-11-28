@@ -27,7 +27,7 @@ export interface StoreReview { id: string; rating: number; title?: string | null
 export interface PromoBar { headline: string; offerText: string | null; deliveryText: string | null; isActive: boolean; startsAt: string | null; endsAt: string | null }
 export interface NewsletterSubscribeResponse { success: boolean; statusCode: number; message: string; data: null; timestamp?: string; path?: string }
 export interface ApiPage<T> { data: T[]; meta?: { page: number; limit: number; total: number; totalPages: number } }
-export interface StoreProductQuery { page?: number; limit?: number; search?: string; category?: string; subcategory?: string; brand?: string; minPrice?: number; maxPrice?: number; inStock?: boolean; onSale?: boolean; minRating?: number; sort?: string }
+export interface StoreProductQuery { page?: number; limit?: number; search?: string; category?: string; subcategory?: string; brand?: string; minPrice?: number; maxPrice?: number; inStock?: boolean; onSale?: boolean; minRating?: number; sort?: string; productCategory?: string; jewelryCategory?: string; tryOnEligible?: boolean; productIds?: string }
 type Envelope<T> = { data: T };
 interface WishlistPage { data: Array<{ id: string; product: { id: string } }>; meta?: { page: number; limit: number; total: number; totalPages: number } }
 export type OrderRequest = {
@@ -36,8 +36,14 @@ export type OrderRequest = {
   addressLine: string; city: string; area?: string; postalCode?: string;
   customerNote?: string; couponCode?: string; paymentMethod: "CALL_CONFIRMATION";
 };
-export interface CustomerOrder { id: string; orderNumber: string; status: string; total: string | number; recipientPhone: string }
+export interface CustomerOrder { id: string; orderNumber: string; status: string; total: string | number; recipientName: string; recipientPhone: string }
+export interface MyOrderSummary {
+  id: string; orderNumber: string; status: string; paymentStatus: string; paymentMethod: string;
+  total: string | number; currencyCode: string; createdAt: string;
+  items: Array<{ productName: string; variantName?: string | null; quantity: number; unitPrice: string | number; lineTotal: string | number }>;
+}
 export interface CouponValidation { code: string; name: string; discountType: "PERCENT" | "FIXED"; discountValue: number | string; subtotal: number; discountAmount: number; totalAfterDiscount: number }
+export interface SupportRequestInput { name: string; email: string; phone?: string; orderId?: string; subject: string; message: string }
 
 export const storefrontApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -77,6 +83,13 @@ export const storefrontApi = baseApi.injectEndpoints({
     createOrder: build.mutation<Envelope<CustomerOrder>, OrderRequest>({
       query: (body) => ({ url: "/orders", method: "POST", body }),
     }),
+    getMyOrders: build.query<{ data: MyOrderSummary[]; meta?: { page: number; limit: number; total: number; totalPages: number } }, void>({
+      query: () => "/orders?limit=50",
+      providesTags: ["Orders"],
+    }),
+    submitSupportRequest: build.mutation<Envelope<{ id: string; reference: string; status: string; createdAt: string }>, SupportRequestInput>({
+      query: (body) => ({ url: "/support/requests", method: "POST", body }),
+    }),
     validateCoupon: build.mutation<Envelope<CouponValidation>, { code: string; subtotal: number }>({
       query: (body) => ({ url: "/coupons/validate", method: "POST", body }),
     }),
@@ -95,10 +108,13 @@ export const storefrontApi = baseApi.injectEndpoints({
     getAiLooks: build.query<Envelope<Array<{ id: string; title?: string; createdAt: string; products: Array<{ id: string; name: string; slug: string }>; imageUrl: string | null }>>, void>({
       query: () => "/ai/saved-looks?limit=50", providesTags: ["SavedLooks"],
     }),
+    setAiLookFavorite: build.mutation<Envelope<{ id: string; isFavorite: boolean }>, { id: string; isFavorite: boolean }>({
+      query: ({ id, isFavorite }) => ({ url: `/ai/saved-looks/${id}/favorite`, method: "PATCH", body: { isFavorite } }), invalidatesTags: ["SavedLooks"],
+    }),
     deleteAiLook: build.mutation<Envelope<null>, string>({
       query: (id) => ({ url: `/ai/saved-looks/${id}`, method: "DELETE" }), invalidatesTags: ["SavedLooks"],
     }),
   }),
 });
 
-export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation } = storefrontApi;
+export const { useSubscribeNewsletterMutation, useGetPromoBarQuery, useGetStoreFilterOptionsQuery, useGetStoreProductsQuery, useGetStoreProductQuery, useGetProductReviewsQuery, useCreateProductReviewMutation, useGetWishlistQuery, useAddWishlistItemMutation, useRemoveWishlistItemMutation, useCreateOrderMutation, useGetMyOrdersQuery, useSubmitSupportRequestMutation, useValidateCouponMutation, useStartJewelryTryOnMutation, useGetJewelryTryOnQuery, useDeleteJewelryTryOnMutation, useSaveAiLookMutation, useGetAiLooksQuery, useDeleteAiLookMutation, useSetAiLookFavoriteMutation } = storefrontApi;

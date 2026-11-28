@@ -17,6 +17,7 @@ import {
   Sparkles,
   LogOut,
   Mail,
+  MessageSquare,
 } from "lucide-react";
 import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import { logOut } from "@/redux/features/auth/authSlice";
@@ -62,6 +63,16 @@ const defaultSidebarItems: SidebarItem[] = [
     label: "Orders Management",
     href: "/admin-dashboard/orders",
     badge: "New",
+  },
+  {
+    icon: MessageSquare,
+    label: "Support Inbox",
+    href: "/admin-dashboard/support",
+  },
+  {
+    icon: Sparkles,
+    label: "AI Try-On Studio",
+    href: "/admin-dashboard/ai-try-on",
   },
   {
     icon: Users,

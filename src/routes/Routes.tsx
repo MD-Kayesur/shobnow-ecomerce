@@ -23,6 +23,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import RefundPolicy from "@/pages/RefundPolicy";
 import DeliveryPolicy from "@/pages/DeliveryPolicy";
 import Assistant from "@/pages/Assistant";
+import AiTryOnStudio from "@/pages/AiTryOnStudio";
 
 import {
   AdminLayout,
@@ -36,6 +37,8 @@ import {
   ActivityLogsPage,
   ErrorLogsPage,
   NewsletterSubscribersPage,
+  SupportRequestsPage,
+  AiTryOnAdminPage,
 } from "@/AdminDashboard";
 import AddProductWizardPage from "@/AdminDashboard/pages/AddProductWizardPage";
 
@@ -65,6 +68,10 @@ const routes = createBrowserRouter([
       {
         path: "/assistant",
         element: <Assistant />,
+      },
+      {
+        path: "/ai-try-on",
+        element: <AiTryOnStudio />,
       },
       {
         path: "/products",
@@ -245,6 +252,8 @@ const routes = createBrowserRouter([
       { path: "activity-logs", element: <ActivityLogsPage /> },
       { path: "error-logs", element: <ErrorLogsPage /> },
       { path: "newsletter", element: <NewsletterSubscribersPage /> },
+      { path: "support", element: <SupportRequestsPage /> },
+      { path: "ai-try-on", element: <AiTryOnAdminPage /> },
       { path: "settings", element: <SettingsPage /> },
       { path: "audit-log", element: <SettingsPage /> },
     ],

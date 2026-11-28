@@ -9,6 +9,8 @@ export { default as CategoriesBrandsPage } from "./pages/CategoriesBrandsPage";
 export { default as SettingsPage } from "./pages/SettingsPage";
 export { ActivityLogsPage, ErrorLogsPage } from "./pages/AuditLogsPage";
 export { default as NewsletterSubscribersPage } from "./pages/NewsletterSubscribersPage";
+export { default as SupportRequestsPage } from "./pages/SupportRequestsPage";
+export { default as AiTryOnAdminPage } from "./pages/AiTryOnAdminPage";
 
 export { default as AdminSidebar } from "./components/AdminSidebar";
 export { default as AdminDashboardNavBar } from "./components/AdminDashboardNavBar";

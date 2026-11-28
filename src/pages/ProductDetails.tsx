@@ -6,14 +6,13 @@ import {
   ShoppingBag, ShoppingCart, Sparkles, Star, Truck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { addToCart } from "@/redux/features/cart/cartSlice";
+import { addToCart, type CartItem } from "@/redux/features/cart/cartSlice";
 import {
   StoreProduct, StoreReview, useAddWishlistItemMutation, useCreateProductReviewMutation,
   useGetProductReviewsQuery, useGetStoreProductQuery, useGetStoreProductsQuery,
   useGetWishlistQuery, useRemoveWishlistItemMutation,
 } from "@/redux/features/storefront/storefrontApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/redux-hook";
-import JewelryTryOnModal from "@/components/Product/JewelryTryOnModal";
 
 const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4001/api/v1").replace(/\/api\/v\d+\/?$/, "");
 const imageUrl = (url?: string | null) => !url ? "" : /^https?:\/\//i.test(url) ? url : `${apiOrigin}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -51,7 +50,6 @@ const ProductDetails = () => {
   const [reviewText, setReviewText] = useState("");
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedBundle, setSelectedBundle] = useState<string[]>([]);
-  const [showTryOn, setShowTryOn] = useState(false);
 
   const { data: wishlistResponse } = useGetWishlistQuery(undefined, { skip: !user });
   const [addWishlist, { isLoading: addingWishlist }] = useAddWishlistItemMutation();
@@ -100,18 +98,21 @@ const ProductDetails = () => {
     } catch (error) { toast.error(errorMessage(error)); }
   };
 
-  const addProductToCart = (item: StoreProduct, count = 1, openDrawer = true) => {
+  const makeCartItem = (item: StoreProduct, count = 1): CartItem => {
     const itemVariant = item.id === product.id ? variant : item.variants.find((v) => v.isDefault) || item.variants[0];
     const price = Number(itemVariant?.sellingPrice ?? item.salePrice ?? item.price);
     const itemImages = item.media || [];
     const itemImage = imageUrl(itemImages.find((m) => m.isPrimary)?.imageUrl || itemImages[0]?.imageUrl);
-    dispatch(addToCart({
+    return {
       id: item.id, slug: item.slug, name: item.name, price,
       ...(Number(item.price) > price ? { originalPrice: Number(item.price) } : {}),
       image: itemImage, brand: item.brand?.name || undefined, category: item.category?.slug,
-      selectedSize: itemVariant?.variantName || undefined, quantity: count, openDrawer,
+      selectedSize: itemVariant?.variantName || undefined, quantity: count,
       variantId: itemVariant?.id,
-    }));
+    };
+  };
+  const addProductToCart = (item: StoreProduct, count = 1, openDrawer = true) => {
+    dispatch(addToCart({ ...makeCartItem(item, count), openDrawer }));
   };
   const addBundle = () => {
     addProductToCart(product, 1, false);
@@ -188,9 +189,10 @@ const ProductDetails = () => {
           <div className="mt-4 flex flex-wrap gap-3">
             <div className="flex h-11 items-center rounded-full border border-pink-100 bg-white shadow-sm"><button onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1} aria-label="Decrease quantity" className="grid h-10 w-10 place-items-center rounded-full text-slate-700 transition-colors hover:bg-[#fff0f7] hover:text-[#e90068] disabled:opacity-40"><Minus size={15}/></button><span className="min-w-7 text-center text-sm font-bold">{quantity}</span><button onClick={() => setQuantity(Math.min(stockCount || 1, quantity + 1))} disabled={!inStock || quantity >= stockCount} aria-label="Increase quantity" className="grid h-10 w-10 place-items-center rounded-full text-slate-700 transition-colors hover:bg-[#fff0f7] hover:text-[#e90068] disabled:opacity-40"><Plus size={16}/></button></div>
             <button onClick={() => { addProductToCart(product, quantity, true); toast.success("Added to your cart."); }} disabled={!inStock} className="inline-flex min-w-[175px] flex-1 items-center justify-center gap-2 rounded-full bg-[#e90068] px-5 py-3 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#c9005b] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:translate-y-0 disabled:hover:shadow-none sm:flex-none"><ShoppingCart size={19}/>Add to Cart</button>
-            <button onClick={() => { if (!inStock) return; if (!user) { toast.info("Sign in to place your order."); navigate("/login", { state: { from: `/product/${product.slug}` } }); return; } addProductToCart(product, quantity, false); navigate("/checkout"); }} disabled={!inStock} className="inline-flex min-w-[145px] flex-1 items-center justify-center gap-2 rounded-full border border-[#e90068] bg-white px-5 py-3 text-sm font-bold text-[#c00759] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#fff0f7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 sm:flex-none"><ShoppingBag size={18}/>Buy Now</button>
+            <button onClick={() => { if (!inStock) return; if (!user) { toast.info("Sign in to place your order."); navigate("/login", { state: { from: `/product/${product.slug}` } }); return; } navigate("/checkout", { state: { buyNowItem: makeCartItem(product, quantity) } }); }} disabled={!inStock} className="inline-flex min-w-[145px] flex-1 items-center justify-center gap-2 rounded-full border border-[#e90068] bg-white px-5 py-3 text-sm font-bold text-[#c00759] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#fff0f7] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 sm:flex-none"><ShoppingBag size={18}/>Buy Now</button>
           </div>
-          {canTryOn && <button type="button" onClick={() => setShowTryOn(true)} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-[#e90068] bg-gradient-to-r from-[#fff1f8] to-white px-5 py-3 text-sm font-extrabold text-[#c00759] transition-all hover:-translate-y-0.5 hover:bg-[#ffe5f1] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2"><Sparkles size={18}/>AI Try Now</button>}
+          {canTryOn && <div className="mt-3"><button type="button" onClick={() => navigate(`/ai-try-on?productSlug=${encodeURIComponent(product.slug)}&productId=${encodeURIComponent(product.id)}${variant?.id ? `&variantId=${encodeURIComponent(variant.id)}` : ""}`)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f74c9b] to-[#e90068] px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(233,0,104,.2)] transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2"><Sparkles size={18}/>AI Try Now</button><p className="mt-1.5 text-center text-xs text-slate-500">See how it may look on you before buying.</p></div>}
+          {product?.productCategory === "COSMETICS" && <div className="mt-3"><button type="button" onClick={() => navigate(`/ai-try-on?productSlug=${encodeURIComponent(product.slug)}&productId=${encodeURIComponent(product.id)}&productCategory=COSMETICS${variant?.id ? `&variantId=${encodeURIComponent(variant.id)}` : ""}`)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f74c9b] to-[#e90068] px-5 py-3 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(233,0,104,.2)] transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e90068]/50 focus-visible:ring-offset-2"><Sparkles size={18}/>Try Cosmetics in AI Studio</button><p className="mt-1.5 text-center text-xs text-slate-500">Open the AI Studio with this product selected.</p></div>}
           {canConsult && <button type="button" onClick={() => navigate("/assistant", { state: { from: `/product/${product.slug}`, productName: product.name, initialPrompt: `Please explain the verified benefits, suitability, instructions, cautions, and limitations for ${product.name}. Do not promise treatment results.` } })} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-pink-200 bg-[#fff5fa] px-5 py-3 text-sm font-bold text-[#a20e4c] transition-colors hover:bg-[#ffe8f2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e72c7e]/40"><Sparkles size={17}/>AI Beauty Consultation</button>}
           <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl border border-pink-100 bg-white p-4 text-xs sm:grid-cols-4"><div className="flex items-center gap-2"><ShieldCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>Secure checkout</span></div><div className="flex items-center gap-2"><Truck className="shrink-0 text-[#e72c7e]" size={20}/><span>Delivery at checkout</span></div><div className="flex items-center gap-2"><RotateCcw className="shrink-0 text-[#e72c7e]" size={20}/><span>See return policy</span></div><div className="flex items-center gap-2"><BadgeCheck className="shrink-0 text-[#e72c7e]" size={20}/><span>{product.authenticityVerified ? "Authenticity verified" : "Product details provided"}</span></div></div>
         </div>
@@ -252,7 +254,6 @@ const ProductDetails = () => {
         )}
       </div>
     </div>
-    {showTryOn && canTryOn && <JewelryTryOnModal product={product} variantId={variant?.id} variantName={variant?.variantName} price={productPrice} productImage={image} onClose={() => setShowTryOn(false)}/>}
   </main>;
 };
 

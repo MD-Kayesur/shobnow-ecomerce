@@ -14,6 +14,8 @@ export type AssistantReply = {
   safetyNotice: string;
 };
 type Envelope<T> = { data: T };
+const safeHistory = (history?: AssistantTurn[]) =>
+  history?.slice(-8).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 1000) }));
 
 export const assistantApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -41,7 +43,8 @@ export const assistantApi = baseApi.injectEndpoints({
           const body = new FormData();
           body.append('message', message);
           if (sessionId) body.append('sessionId', sessionId);
-          if (history) body.append('history', JSON.stringify(history.slice(-8)));
+          // The backend multipart parser validates this JSON field as a string on some
+          // deployments; omit optional context so photo + caption sends remain reliable.
           if (photoConsent) body.append('photoConsent', 'true');
           body.append('photo', photo);
           return { url: authenticated ? '/ai/cosmetics/chat' : '/assistant/chat', method: 'POST', body };
@@ -49,10 +52,17 @@ export const assistantApi = baseApi.injectEndpoints({
         return {
           url: authenticated ? '/ai/cosmetics/chat' : '/assistant/chat',
           method: 'POST',
-          body: { message, ...(sessionId ? { sessionId } : {}), ...(history ? { history: history.slice(-8) } : {}) },
+          body: { message, ...(sessionId ? { sessionId } : {}), ...(history ? { history: safeHistory(history) } : {}) },
         };
       },
       invalidatesTags: (_result, _error, args) => args.authenticated ? ['AssistantSessions'] : [],
+    }),
+    transcribeAssistantAudio: build.mutation<Envelope<{ transcript: string }>, File>({
+      query: (audio) => {
+        const body = new FormData();
+        body.append('audio', audio);
+        return { url: '/assistant/transcribe', method: 'POST', body };
+      },
     }),
   }),
 });
@@ -62,4 +72,5 @@ export const {
   useGetAssistantSessionQuery,
   useDeleteAssistantSessionMutation,
   useSendAssistantMessageMutation,
+  useTranscribeAssistantAudioMutation,
 } = assistantApi;

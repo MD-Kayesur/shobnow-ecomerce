@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Heart,
   LayoutGrid,
+  LogOut,
   Menu,
   Search,
   ShoppingCart,
@@ -12,6 +13,8 @@ import {
   Zap,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/redux-hook";
+import { logOut, useCurrentUser } from "@/redux/features/auth/authSlice";
+import { useLogoutMutation } from "@/redux/features/auth/authApi";
 import {
   openCartDrawer,
   selectCartTotalCount,
@@ -26,6 +29,10 @@ const NavBar: React.FC = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const cartCount = useAppSelector(selectCartTotalCount);
+  const user = useAppSelector(useCurrentUser);
+  const { token, isInitialized } = useAppSelector((state) => state.auth);
+  const isLoggedIn = Boolean(token && user);
+  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -73,6 +80,15 @@ const NavBar: React.FC = () => {
     if (!query) return;
     navigate(`/shop?search=${encodeURIComponent(query)}`);
     setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout().unwrap();
+    } catch {
+      // Clear the local session even when the logout endpoint is unavailable.
+    }
+    dispatch(logOut());
   };
 
   const categoryItem = subNavItems.find(
@@ -172,13 +188,34 @@ const NavBar: React.FC = () => {
                 </span>
               )}
             </button>
-            <Link
-              to="/login"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#ffe3f2] px-3 text-xs font-bold text-[#28162a] transition-all hover:bg-[#ffd0e8] hover:shadow-[0_3px_12px_rgba(217,0,96,0.15)] sm:px-3.5 sm:text-sm"
-            >
-              <User size={15} />
-              <span>Login</span>
-            </Link>
+            {isInitialized ? (
+              isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  disabled={isLoggingOut}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#ffe3f2] px-3 text-xs font-bold text-[#28162a] transition-all hover:bg-[#ffd0e8] hover:shadow-[0_3px_12px_rgba(217,0,96,0.15)] disabled:cursor-wait disabled:opacity-70 sm:px-3.5 sm:text-sm"
+                >
+                  <LogOut size={15} />
+                  <span>{isLoggingOut ? "Logging out…" : "Logout"}</span>
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#ffe3f2] px-3 text-xs font-bold text-[#28162a] transition-all hover:bg-[#ffd0e8] hover:shadow-[0_3px_12px_rgba(217,0,96,0.15)] sm:px-3.5 sm:text-sm"
+                >
+                  <User size={15} />
+                  <span>Login</span>
+                </Link>
+              )
+            ) : (
+              <span
+                aria-label="Checking login status"
+                className="inline-flex h-9 min-w-[76px] items-center justify-center rounded-full bg-[#ffe3f2]/70 px-3 text-xs font-bold text-[#28162a]/60 sm:px-3.5 sm:text-sm"
+              >
+                …
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen((open) => !open)}

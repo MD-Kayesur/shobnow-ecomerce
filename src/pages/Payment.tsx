@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
   Building2,
   Check,
-  CheckCircle2,
   CreditCard,
   Lock,
   ChevronRight,
@@ -22,27 +21,36 @@ import {
 import { useAppDispatch, useAppSelector } from "@/redux/hooks/redux-hook";
 import {
   selectCartItems,
-  selectCartSubtotal,
   selectCartDiscount,
   selectCartAppliedCode,
   clearCart,
   applyDiscountAmount,
   removeDiscount,
 } from "@/redux/features/cart/cartSlice";
+import type { CartItem } from "@/redux/features/cart/cartSlice";
 import { toast } from "sonner";
 import { useCreateOrderMutation, useValidateCouponMutation } from "@/redux/features/storefront/storefrontApi";
 import checkoutBeautyCluster from "@/assets/banners/checkout-beauty-cluster.png";
+import orderConfirmationIllustration from "@/assets/orders/order-confirmation-illustration.png";
 
 const apiOrigin = (import.meta.env.VITE_API_ENDPOINT || "http://localhost:4101/api/v1").replace(/\/api\/v\d+\/?$/, "");
 const imageSource = (source: string) => !source ? "" : /^(https?:|data:|blob:)/i.test(source) ? source : source.startsWith("/uploads/") ? `${apiOrigin}${source}` : source;
+const formatTaka = (value: number | string) => `\u09F3 ${Number(value || 0).toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
 
 export const Payment: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
+  const buyNowItem = (location.state as { buyNowItem?: CartItem } | null)?.buyNowItem;
   const cartItems = useAppSelector(selectCartItems);
-  const subtotal = useAppSelector(selectCartSubtotal);
-  const discount = useAppSelector(selectCartDiscount);
-  const appliedCode = useAppSelector(selectCartAppliedCode);
+  const checkoutItems = buyNowItem ? [buyNowItem] : cartItems;
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartDiscount = useAppSelector(selectCartDiscount);
+  const cartAppliedCode = useAppSelector(selectCartAppliedCode);
+  const [buyNowDiscount, setBuyNowDiscount] = useState(0);
+  const [buyNowCouponCode, setBuyNowCouponCode] = useState<string>();
+  const discount = buyNowItem ? buyNowDiscount : cartDiscount;
+  const appliedCode = buyNowItem ? buyNowCouponCode : cartAppliedCode;
   const user = useAppSelector((state) => state.auth.user);
   const [createOrder] = useCreateOrderMutation();
   const [validateCoupon, { isLoading: isValidatingCoupon }] = useValidateCouponMutation();
@@ -71,6 +79,8 @@ export const Payment: React.FC = () => {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [generatedOrderId, setGeneratedOrderId] = useState("");
   const [generatedOrderTotal, setGeneratedOrderTotal] = useState(0);
+  const [generatedOrderName, setGeneratedOrderName] = useState("");
+  const [generatedOrderPhone, setGeneratedOrderPhone] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -91,12 +101,14 @@ export const Payment: React.FC = () => {
   useEffect(() => {
     if (!appliedCode || subtotal <= 0) return;
     void validateCoupon({ code: appliedCode, subtotal }).unwrap().then((result) => {
-      dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
+      if (buyNowItem) setBuyNowDiscount(result.data.discountAmount);
+      else dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
     }).catch(() => {
-      dispatch(removeDiscount());
+      if (buyNowItem) setBuyNowDiscount(0);
+      else dispatch(removeDiscount());
       setCouponError("This coupon is no longer valid for your order.");
     });
-  }, [appliedCode, subtotal, validateCoupon, dispatch]);
+  }, [appliedCode, subtotal, validateCoupon, dispatch, buyNowItem]);
 
   const handleApplyCoupon = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -104,7 +116,10 @@ export const Payment: React.FC = () => {
     if (!code) return;
     try {
       const result = await validateCoupon({ code, subtotal }).unwrap();
-      dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
+      if (buyNowItem) {
+        setBuyNowCouponCode(result.data.code);
+        setBuyNowDiscount(result.data.discountAmount);
+      } else dispatch(applyDiscountAmount({ code: result.data.code, amount: result.data.discountAmount }));
       setCouponMessage(`৳${result.data.discountAmount.toLocaleString()} discount applied.`);
       setCouponError("");
       setCouponInput("");
@@ -131,7 +146,7 @@ export const Payment: React.FC = () => {
 
     if (!agreeTerms) { toast.error("Please confirm the order terms to proceed."); return; }
 
-    if (cartItems.length === 0) {
+    if (checkoutItems.length === 0) {
       toast.error("Your cart is empty!");
       return;
     }
@@ -147,7 +162,7 @@ export const Payment: React.FC = () => {
     }
     setIsSubmitting(true);
     void createOrder({
-      items: cartItems.map((item) => ({ productId: String(item.id), ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
+      items: checkoutItems.map((item) => ({ productId: String(item.id), ...(item.variantId ? { variantId: item.variantId } : {}), quantity: item.quantity })),
       recipientName: formData.fullName.trim(), recipientPhone: formData.phone.trim(), recipientEmail: formData.email.trim() || undefined,
       addressLine: orderAddress, city: orderCity, area: address?.area || deliveryArea, customerNote: formData.orderNote.trim() || undefined,
       couponCode: appliedCode || undefined,
@@ -156,8 +171,10 @@ export const Payment: React.FC = () => {
       const orderId = response.data.orderNumber;
       setGeneratedOrderId(orderId);
       setGeneratedOrderTotal(Number(response.data.total));
+      setGeneratedOrderName(response.data.recipientName || formData.fullName.trim());
+      setGeneratedOrderPhone(response.data.recipientPhone || formData.phone.trim());
       setOrderSuccess(true);
-      dispatch(clearCart());
+      if (!buyNowItem) dispatch(clearCart());
       toast.success("Order submitted. Our team will call you to confirm.");
     }).catch((error) => {
       const message = (error as { data?: { message?: string | string[] } })?.data?.message;
@@ -304,7 +321,7 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Inside Dhaka (à§³60)
+                        Inside Dhaka ({formatTaka(60)})
                       </button>
                       <button
                         type="button"
@@ -318,7 +335,7 @@ export const Payment: React.FC = () => {
                             : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300"
                         }`}
                       >
-                        Outside Dhaka (à§³120)
+                        Outside Dhaka ({formatTaka(120)})
                       </button>
                     </div>
                   </div>
@@ -406,20 +423,21 @@ export const Payment: React.FC = () => {
             <div className="rounded-[24px] border border-[#f0e4eb] bg-white p-5 shadow-[0_8px_26px_rgba(46,17,35,0.055)] sm:p-6">
               <div className="mb-1 flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#ffe4f2] text-[#b80d4e]"><ShoppingBag size={21}/></span><h2 className="text-xl font-extrabold text-[#151d33] sm:text-[22px]">Order Summary</h2></div>
-                <span className="rounded-full bg-[#ffe4f2] px-3 py-1.5 text-xs font-bold text-[#9f174c]">{cartItems.reduce((count, item) => count + item.quantity, 0)} pieces</span>
+                <span className="rounded-full bg-[#ffe4f2] px-3 py-1.5 text-xs font-bold text-[#9f174c]">{checkoutItems.reduce((count, item) => count + item.quantity, 0)} {buyNowItem ? 'piece' : 'pieces'}</span>
               </div>
+              {buyNowItem && <p className="mb-2 text-xs font-medium text-slate-500">Buy Now · this product only</p>}
               <div className="max-h-60 divide-y divide-slate-100 overflow-y-auto pr-1">
-                {cartItems.map((item) => <div key={`${item.id}-${item.selectedSize}`} className="flex items-center justify-between gap-3 py-3">
+                {checkoutItems.map((item) => <div key={`${item.id}-${item.selectedSize}`} className="flex items-center justify-between gap-3 py-3">
                   <div className="flex min-w-0 items-center gap-3"><img src={imageSource(item.image)} alt={item.name} onError={(event) => { event.currentTarget.style.visibility = "hidden"; }} className="h-[68px] w-[68px] shrink-0 rounded-xl border border-pink-100 bg-[#fff3f8] object-contain p-1"/><div className="min-w-0"><p className="line-clamp-2 text-sm font-bold text-[#171d32]">{item.name}</p><p className="mt-1 text-xs text-slate-500">Qty: {item.quantity}{item.selectedSize ? ` ? ${item.selectedSize}` : ""}</p></div></div>
-                  <span className="shrink-0 text-sm font-bold text-[#161d32]">?{(item.price * item.quantity).toLocaleString()}</span>
+                  <span className="shrink-0 text-sm font-bold text-[#161d32]">{formatTaka(item.price * item.quantity)}</span>
                 </div>)}
-                {cartItems.length === 0 && <p className="py-5 text-sm text-slate-500">Your cart is empty.</p>}
+                {checkoutItems.length === 0 && <p className="py-5 text-sm text-slate-500">Your cart is empty.</p>}
               </div>
               <div className="border-t border-slate-100 py-4">
                 {appliedCode ? (
                   <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
                     <span className="flex items-center gap-2"><Tag size={15}/><strong>{appliedCode}</strong> applied</span>
-                    <button type="button" onClick={() => { dispatch(removeDiscount()); setCouponMessage(""); setCouponError(""); }} className="text-xs font-semibold underline">Remove</button>
+                    <button type="button" onClick={() => { if (buyNowItem) { setBuyNowCouponCode(undefined); setBuyNowDiscount(0); } else dispatch(removeDiscount()); setCouponMessage(""); setCouponError(""); }} className="text-xs font-semibold underline">Remove</button>
                   </div>
                 ) : (
                   <form onSubmit={handleApplyCoupon} className="flex gap-2">
@@ -431,12 +449,12 @@ export const Payment: React.FC = () => {
                 {couponMessage && <p className="mt-2 text-xs text-emerald-700">{couponMessage}</p>}
               </div>
               <div className="space-y-3 border-t border-slate-100 pt-4 text-sm text-slate-700">
-                <div className="flex justify-between"><span>Subtotal</span><strong className="text-[#171d32]">?{subtotal.toLocaleString()}</strong></div>
-                <div className="flex items-center justify-between"><span>Delivery Fee ({deliveryArea === "inside" ? "Inside Dhaka" : "Outside Dhaka"})</span>{isFreeShipping ? <strong className="text-emerald-600">FREE</strong> : <strong className="text-[#171d32]">?{shippingFee}</strong>}</div>
-                {discount > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-2">Discount / Coupon <span className="rounded-full bg-[#ffe4f2] px-2 py-1 text-[9px] font-extrabold text-[#c8175b]">{appliedCode ? String(appliedCode) : "COUPON"}</span></span><strong className="text-[#d41465]">??{discount.toLocaleString()}</strong></div>}
-                <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-lg font-extrabold text-[#111a31] sm:text-xl"><span>Grand Total</span><strong className="text-2xl font-black text-[#e31968] sm:text-[28px]">?{grandTotal.toLocaleString()}</strong></div>
+                <div className="flex justify-between"><span>Subtotal</span><strong className="text-[#171d32]">{formatTaka(subtotal)}</strong></div>
+                <div className="flex items-center justify-between"><span>Delivery Fee ({deliveryArea === "inside" ? "Inside Dhaka" : "Outside Dhaka"})</span>{isFreeShipping ? <strong className="text-emerald-600">FREE</strong> : <strong className="text-[#171d32]">{formatTaka(shippingFee)}</strong>}</div>
+                {discount > 0 && <div className="flex items-center justify-between"><span className="flex items-center gap-2">Discount / Coupon <span className="rounded-full bg-[#ffe4f2] px-2 py-1 text-[9px] font-extrabold text-[#c8175b]">{appliedCode ? String(appliedCode) : "COUPON"}</span></span><strong className="text-[#d41465]">−{formatTaka(discount)}</strong></div>}
+                <div className="flex items-center justify-between border-t border-slate-200 pt-4 text-lg font-extrabold text-[#111a31] sm:text-xl"><span>Grand Total</span><strong className="text-2xl font-black text-[#e31968] sm:text-[28px]">{formatTaka(grandTotal)}</strong></div>
               </div>
-              <button type="submit" form="checkout-form" disabled={isSubmitting || cartItems.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#f51372] to-[#e90068] px-5 py-4 text-base font-extrabold text-white shadow-[0_9px_20px_rgba(233,0,104,0.22)] transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? <span>Processing Order...</span> : <><Lock size={19}/><span>Confirm &amp; Place Order</span></>}</button>
+              <button type="submit" form="checkout-form" disabled={isSubmitting || checkoutItems.length === 0} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#f51372] to-[#e90068] px-5 py-4 text-base font-extrabold text-white shadow-[0_9px_20px_rgba(233,0,104,0.22)] transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? <span>Processing Order...</span> : <><Lock size={19}/><span>Confirm &amp; Place Order</span></>}</button>
               <div className="mt-5 grid grid-cols-2 gap-y-4 border-t border-slate-100 pt-4 text-[11px]">
                 <div className="flex items-center gap-2 border-r border-slate-100 pr-2"><BadgeCheck size={23} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">100% Authentic</strong><span className="text-slate-500">Genuine beauty products</span></span></div>
                 <div className="flex items-center gap-2 pl-3"><Lock size={22} className="shrink-0 text-[#ed2b83]"/><span><strong className="block text-xs text-[#182039]">SSL Secured Checkout</strong><span className="text-slate-500">Your data is protected</span></span></div>
@@ -450,54 +468,25 @@ export const Payment: React.FC = () => {
 
       {/* Order Confirmation Modal */}
       {orderSuccess && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#111622] rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-pink-100/80 dark:border-gray-800 text-center animate-in zoom-in-95">
-            <div className="w-16 h-16 rounded-full bg-[#FFE2FF] text-[#500624] flex items-center justify-center mx-auto mb-4 shadow-sm">
-              <CheckCircle2 size={36} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-[30px] border border-pink-100 bg-white p-6 text-center shadow-2xl sm:p-9">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-pink-50 to-transparent" />
+            <div className="relative mx-auto mb-1 grid h-32 w-32 place-items-center">
+              <div className="absolute inset-2 rounded-full bg-pink-100/80 blur-xl" />
+              <img src={orderConfirmationIllustration} alt="Beauty order confirmed" className="relative h-full w-full object-contain" />
             </div>
-
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#500624] dark:text-[#FFE2FF] bg-[#FFE2FF]/50 dark:bg-[#FFE2FF]/20 px-3 py-1 rounded-full">
-              Order Pending
-            </span>
-
-            <h2 className="text-2xl sm:text-3xl font-bold font-['Faustina'] text-gray-900 dark:text-white mt-3">
-              Thank You for Your Order!
-            </h2>
-
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
-              Your order <strong>#{generatedOrderId}</strong> has been sent to our team and is pending confirmation. We will call <strong>{formData.phone}</strong> before processing it.
-            </p>
-
-            <div className="my-6 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 text-left text-xs space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Invoice Number:</span>
-                <span className="font-bold text-gray-900 dark:text-white">{generatedOrderId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Payment Option:</span>
-                <span className="font-bold text-gray-900 dark:text-white uppercase">Phone confirmation</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Total Amount:</span>
-                <span className="font-bold text-[#500624] dark:text-[#FFE2FF]">à§³{generatedOrderTotal.toLocaleString()}</span>
-              </div>
+            <span className="relative inline-flex rounded-full bg-[#f8e8ef] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#A20E4C]">Order pending confirmation</span>
+            <h2 className="mt-3 font-['Faustina'] text-2xl font-bold text-slate-900 sm:text-3xl">Thank you{generatedOrderName ? `, ${generatedOrderName.trim().split(/\s+/)[0]}` : ''}!</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Order <strong className="text-slate-800">#{generatedOrderId}</strong> is with our team. We’ll call the phone number you gave us to confirm it before processing.</p>
+            {generatedOrderPhone && <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full bg-pink-50 px-4 py-2 text-sm font-bold text-[#A20E4C]"><Phone size={15}/>{generatedOrderPhone}</div>}
+            <div className="my-6 space-y-3 rounded-2xl border border-pink-100 bg-[#fff9fc] p-4 text-left text-sm sm:p-5">
+              <div className="flex items-center justify-between gap-3"><span className="text-slate-500">Invoice number</span><span className="text-right font-bold text-slate-800">{generatedOrderId}</span></div>
+              <div className="flex items-center justify-between gap-3"><span className="text-slate-500">Payment</span><span className="text-right font-bold text-slate-800">Phone confirmation</span></div>
+              <div className="flex items-center justify-between gap-3 border-t border-pink-100 pt-3"><span className="font-semibold text-slate-700">Total amount</span><span className="text-lg font-extrabold text-[#A20E4C]">{formatTaka(generatedOrderTotal)}</span></div>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate("/")}
-                className="w-full sm:flex-1 py-3 px-5 rounded-xl bg-[#FFE2FF] hover:bg-[#ffd1ff] text-[#500624] font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer border border-pink-200/50"
-              >
-                Return to Home
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/shop")}
-                className="w-full sm:flex-1 py-3 px-5 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-800 dark:text-gray-200 font-bold text-xs sm:text-sm transition-all cursor-pointer"
-              >
-                Continue Shopping
-              </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={() => navigate("/")} className="w-full flex-1 rounded-xl bg-[#A20E4C] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#7E0B3B]">Return to Home</button>
+              <button type="button" onClick={() => navigate("/shop")} className="w-full flex-1 rounded-xl border border-[#A20E4C]/20 bg-white px-5 py-3 text-sm font-bold text-[#A20E4C] transition hover:bg-pink-50">Continue Shopping</button>
             </div>
           </div>
         </div>
