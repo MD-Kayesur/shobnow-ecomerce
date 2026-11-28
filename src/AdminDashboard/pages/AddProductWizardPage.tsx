@@ -18,7 +18,7 @@ import {
 } from "@/redux/features/admin/productsApi";
 import { useGetTaxonomySubcategoriesQuery } from "@/redux/features/admin/taxonomyApi";
 
-type StepKey = "product" | "media" | "variants" | "attributes" | "metadata" | "categoryDetails";
+type StepKey = "product" | "media" | "variants" | "attributes" | "metadata" | "categoryDetails" | "faq";
 const steps: Array<{ key: StepKey; title: string; description: string }> = [
   { key: "product", title: "Product details", description: "Save the core catalog record first." },
   { key: "media", title: "Images", description: "Upload at least one product image." },
@@ -26,6 +26,7 @@ const steps: Array<{ key: StepKey; title: string; description: string }> = [
   { key: "attributes", title: "Specifications", description: "Add product detail rows such as material or skin type." },
   { key: "metadata", title: "SEO metadata", description: "Add search title, description and keywords." },
   { key: "categoryDetails", title: "Product-specific data", description: "Save cosmetic ingredients or jewelry materials and measurements." },
+  { key: "faq", title: "FAQs", description: "Write product questions and answers for shoppers." },
 ];
 
 function errorMessage(error: unknown) {
@@ -76,6 +77,7 @@ export default function AddProductWizardPage() {
   const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
   const [metadataForm, setMetadataForm] = useState({ metaTitle: "", metaDescription: "", metaKeywords: "" });
   const [categoryDetailsJson, setCategoryDetailsJson] = useState("{}");
+  const [faqItems, setFaqItems] = useState<Array<{ question: string; answer: string }>>([]);
   const [cosmeticUsageInstructions, setCosmeticUsageInstructions] = useState("");
   const [jewelryForm, setJewelryForm] = useState<JewelryForm>(emptyJewelryForm);
   const [variantForm, setVariantForm] = useState({ variantName: "", sku: "", color: "", size: "", weight: "", volume: "", unit: "", sellingPrice: "", stockQuantity: "0" });
@@ -111,6 +113,7 @@ export default function AddProductWizardPage() {
   useEffect(() => {
     if (!product) return;
     setProductForm((current) => ({ ...current, ...product, price: Number(product.price), salePrice: product.salePrice == null ? undefined : Number(product.salePrice) }));
+    setFaqItems(Array.isArray(product.faq) ? product.faq : []);
   }, [product]);
 
   useEffect(() => {
@@ -190,10 +193,10 @@ export default function AddProductWizardPage() {
   const metadata = metadataResult?.data ?? null;
   const productType = String(product?.productType ?? productForm.productType ?? "SIMPLE");
   const completion = useMemo(() => {
-    const completed = [Boolean(productId), media.length > 0, productType !== "VARIABLE" || variants.length > 0, attributes.length > 0, Boolean(metadata), productCategory === "COSMETICS" ? Boolean(cosmeticResult?.data?.cosmeticDetails) : productCategory === "JEWELRY" ? Boolean(jewelryResult?.data?.jewelryDetails) : true];
+    const completed = [Boolean(productId), media.length > 0, productType !== "VARIABLE" || variants.length > 0, attributes.length > 0, Boolean(metadata), productCategory === "COSMETICS" ? Boolean(cosmeticResult?.data?.cosmeticDetails) : productCategory === "JEWELRY" ? Boolean(jewelryResult?.data?.jewelryDetails) : true, Boolean(product?.faq?.length)];
     const total = completed.length;
     return { completed, total, percentage: Math.round((completed.filter(Boolean).length / total) * 100) };
-  }, [productId, media.length, productType, variants.length, attributes.length, metadata, productCategory, cosmeticResult, jewelryResult]);
+  }, [productId, media.length, productType, variants.length, attributes.length, metadata, productCategory, cosmeticResult, jewelryResult, product?.faq]);
 
   const setStep = (key: StepKey) => {
     setActiveStep(key);
@@ -408,6 +411,19 @@ export default function AddProductWizardPage() {
     } catch (reason) { setError(errorMessage(reason)); }
   };
 
+  const saveFaq = async (event: FormEvent) => {
+    event.preventDefault(); if (!productId) return;
+    setError(""); setNotice("");
+    const faq = faqItems.map((item) => ({ question: item.question.trim(), answer: item.answer.trim() })).filter((item) => item.question && item.answer);
+    if (faqItems.some((item) => !item.question.trim() || !item.answer.trim())) {
+      setError("Complete both the question and answer, or remove the empty row."); return;
+    }
+    try {
+      await updateProduct({ id: productId, body: { faq } }).unwrap();
+      setNotice(faq.length ? "Product FAQs saved. They will appear in the storefront FAQ tab." : "Product FAQs cleared.");
+    } catch (reason) { setError(errorMessage(reason)); }
+  };
+
   const continueStep = (current: StepKey) => {
     const index = steps.findIndex((step) => step.key === current);
     if (index < steps.length - 1) setStep(steps[index + 1].key);
@@ -433,7 +449,7 @@ export default function AddProductWizardPage() {
       {productId && <div className="flex items-center gap-3"><div className="min-w-36 rounded-xl border border-gray-200 bg-white px-4 py-3 text-right"><div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Setup progress</div><div className="mt-1 text-xl font-bold text-primary">{completion.percentage}%</div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completion.percentage}%` }} /></div></div><Link to="/admin-dashboard/products" className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary">Save and exit</Link></div>}
     </div>
 
-    {productId && <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">{steps.map((step, index) => {
+    {productId && <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{steps.map((step, index) => {
       const done = completion.completed[index]; const active = activeStep === step.key;
       return <button key={step.key} onClick={() => setStep(step.key)} className={`rounded-xl border p-3 text-left transition ${active ? "border-primary bg-pink-50" : "border-gray-200 bg-white hover:border-pink-200"}`}><span className={`mb-2 grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${done ? "bg-emerald-100 text-emerald-700" : active ? "bg-primary text-white" : "bg-gray-100 text-gray-500"}`}>{done ? <Check className="h-3.5 w-3.5" /> : index + 1}</span><span className="block text-xs font-semibold text-gray-800">{step.title}</span><span className={`mt-1 block text-[11px] ${done ? "text-emerald-600" : "text-gray-400"}`}>{done ? "Saved" : "Incomplete"}</span></button>;
     })}</div>}
@@ -509,6 +525,18 @@ export default function AddProductWizardPage() {
         <div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => continueStep("categoryDetails")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Skip for now</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save jewelry details"}</button></div>
       </form> : productCategory === "COSMETICS" ? <form onSubmit={saveCategoryDetails} className="space-y-3"><label className="block"><span className={labelClass}>How to use / Directions</span><textarea className={inputClass} rows={4} maxLength={5000} value={cosmeticUsageInstructions} onChange={(event) => setCosmeticUsageInstructions(event.target.value)} placeholder="Add product-specific directions, such as when and how to apply it."/><span className="mt-1 block text-xs text-gray-500">Shown in the storefront product’s “How to Use” tab.</span></label><label className="block"><span className={labelClass}>Other cosmetic product data (JSON)</span><textarea className={`${inputClass} font-mono text-xs`} rows={15} value={categoryDetailsJson} onChange={(event) => setCategoryDetailsJson(event.target.value)} spellCheck={false}/></label><p className="text-xs text-gray-500">Cosmetic ingredient and skin compatibility details are validated by the backend. You can skip and return later.</p><div className="flex flex-wrap justify-end gap-2"><button type="button" onClick={() => continueStep("categoryDetails")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Skip for now</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save category details"}</button></div></form> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Select Cosmetics or Jewelry in Product details to use this step. <button onClick={() => setStep("product")} className="ml-1 font-semibold underline">Edit product category</button></div>}
       {(Boolean(productCategory === "COSMETICS" && cosmeticResult?.data?.cosmeticDetails) || Boolean(productCategory === "JEWELRY" && jewelryResult?.data?.jewelryDetails)) && <div className="flex justify-end"><button onClick={finishSetup} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white">Finish setup</button></div>}
+    </section>}
+
+    {productId && activeStep === "faq" && <section className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 sm:p-7">
+      <div><h2 className="text-lg font-bold text-gray-900">7. Product FAQs</h2><p className="mt-1 text-sm text-gray-500">Add the questions shoppers commonly ask and the answers your team wants to provide. These are shown in this product’s FAQ tab. Leave the list empty if there are no FAQs yet.</p></div>
+      <form onSubmit={saveFaq} className="space-y-4">
+        {faqItems.map((item, index) => <div key={index} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-4">
+          <label className="block"><span className={labelClass}>Question {index + 1}</span><input required maxLength={300} className={inputClass} value={item.question} onChange={(event) => setFaqItems((items) => items.map((row, rowIndex) => rowIndex === index ? { ...row, question: event.target.value } : row))} placeholder="e.g. Is this suitable for sensitive skin?"/></label>
+          <label className="block"><span className={labelClass}>Answer</span><textarea required maxLength={3000} rows={3} className={inputClass} value={item.answer} onChange={(event) => setFaqItems((items) => items.map((row, rowIndex) => rowIndex === index ? { ...row, answer: event.target.value } : row))} placeholder="Write a clear answer for shoppers."/></label>
+          <div className="flex justify-end"><button type="button" onClick={() => setFaqItems((items) => items.filter((_, rowIndex) => rowIndex !== index))} className="text-xs font-semibold text-rose-600">Remove question</button></div>
+        </div>)}
+        <div className="flex flex-wrap justify-between gap-2"><button type="button" disabled={faqItems.length >= 20} onClick={() => setFaqItems((items) => [...items, { question: "", answer: "" }])} className="rounded-xl border border-primary px-4 py-2.5 text-sm font-semibold text-primary disabled:opacity-50">Add a question</button><div className="flex gap-2"><button type="button" onClick={() => continueStep("faq")} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600">Finish without FAQs</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{saving ? "Saving…" : "Save FAQs"}</button></div></div>
+      </form>
     </section>}
 
     {notice && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}

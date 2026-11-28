@@ -29,6 +29,7 @@ export interface AdminProduct {
   isFeatured?: boolean;
   shippingRequired?: boolean;
   taxable?: boolean;
+  faq?: Array<{ question: string; answer: string }> | null;
 }
 
 export interface PageMeta {

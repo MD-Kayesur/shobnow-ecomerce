@@ -10,6 +10,7 @@ export interface StoreProduct {
   productType: string; productCategory?: string | null; condition?: string | null;
   authenticityType?: string | null; authenticityVerified: boolean; countryOfOrigin?: string | null; manufacturer?: string | null;
   price: number | string; salePrice?: number | string | null; stock: number; isFeatured: boolean; displayType: string; createdAt: string;
+  faq?: Array<{ question: string; answer: string }> | null;
   category?: { id: string; name: string; slug: string } | null; subCategory?: { id: string; name: string; slug: string } | null;
   brand?: { id: string; name: string; slug: string; logo?: string | null; country?: string | null; website?: string | null; description?: string | null; verificationStatus?: string } | null;
   metadata?: { metaTitle?: string | null; metaDescription?: string | null; metaKeywords: string[] } | null;
